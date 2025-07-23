@@ -866,6 +866,7 @@ data class TileColors(
     val classicLabel: Color,
     val classicSecondaryLabel: Color,
     val backgroundGradient: Brush? = null,
+    val circleAroundIcon: Color = Color.Transparent,
 )
 
 @VisibleForTesting
@@ -904,6 +905,7 @@ private object TileDefaults {
             classicLabel = MaterialTheme.colorScheme.onSurface.copy(alpha = .9f),
             classicSecondaryLabel = MaterialTheme.colorScheme.onSurface.copy(alpha = .8f),
             backgroundGradient = gradient,
+            circleAroundIcon = MaterialTheme.colorScheme.primary,
         )
 
     @Composable
@@ -918,6 +920,7 @@ private object TileDefaults {
             outline = MaterialTheme.colorScheme.onSurface,
             classicLabel = MaterialTheme.colorScheme.onSurface.copy(alpha = .9f),
             classicSecondaryLabel = MaterialTheme.colorScheme.onSurface.copy(alpha = .8f),
+            circleAroundIcon = LocalAndroidColorScheme.current.surfaceEffect2,
         )
 
     @Composable

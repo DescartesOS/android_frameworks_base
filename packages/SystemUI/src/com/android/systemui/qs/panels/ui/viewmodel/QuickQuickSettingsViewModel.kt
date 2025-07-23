@@ -74,18 +74,14 @@ constructor(
 
     private val currentTiles by tilesInteractor.currentTiles.hydratedStateOf()
 
-    private var cachedCurrentTiles: List<TileModel> = emptyList()
-    private var cachedTileVMs: Map<TileSpec, TileViewModel> = emptyMap()
+    val allSizedTiles by derivedStateOf {
+        currentTiles.map {
+            SizedTileImpl(TileViewModel(it.tile, it.spec, it.expandable), it.spec.width())
+        }
+    }
 
     val tileViewModels by derivedStateOf {
-        val tiles = currentTiles
-        if (tiles !== cachedCurrentTiles) {
-            cachedCurrentTiles = tiles
-            cachedTileVMs = tiles.associate { it.spec to TileViewModel(it.tile, it.spec, it.expandable) }
-        }
-        tiles
-            .map { SizedTileImpl(cachedTileVMs[it.spec]!!, it.spec.width()) }
-            .let { splitInRowsSequence(it, columns).take(rows).toList().flatten() }
+        allSizedTiles.let { splitInRowsSequence(it, columns).take(rows).toList().flatten() }
     }
 
     override suspend fun onActivated() {
