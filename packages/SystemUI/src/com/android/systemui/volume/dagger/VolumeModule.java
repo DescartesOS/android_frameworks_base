@@ -17,6 +17,8 @@
 package com.android.systemui.volume.dagger;
 
 import android.content.BroadcastReceiver;
+import android.content.Context;
+import android.provider.Settings;
 
 import com.android.systemui.CoreStartable;
 import com.android.systemui.plugins.VolumeDialog;
@@ -34,7 +36,9 @@ import com.android.systemui.volume.panel.dagger.VolumePanelComponent;
 import com.android.systemui.volume.panel.dagger.factory.VolumePanelComponentFactory;
 
 import dagger.Binds;
+import dagger.Lazy;
 import dagger.Module;
+import dagger.Provides;
 import dagger.multibindings.ClassKey;
 import dagger.multibindings.IntoMap;
 import dagger.multibindings.IntoSet;
@@ -56,6 +60,8 @@ import dagger.multibindings.IntoSet;
         }
 )
 public interface VolumeModule {
+
+
 
     /**
      * Binds [VolumePanelDialogReceiver]
@@ -88,6 +94,19 @@ public interface VolumeModule {
     VolumeDialogPluginComponentFactory bindVolumeDialogPluginComponentFactory(
             VolumeDialogPluginComponent.Factory impl);
 
-    @Binds
-    VolumeDialog bindVolumeDialog(AxionVolumeDialogPlugin impl);
+    /**  */
+    @Provides
+    static VolumeDialog provideVolumeDialog(
+            Lazy<AxionVolumeDialogPlugin> axionVolumeDialogPlugin,
+            Lazy<VolumeDialogPlugin> volumeDialogProvider,
+            Context context) {
+        final int volumeDialogType = Settings.System.getInt(
+                context.getContentResolver(),
+                "volume_dialog_type",
+                1);
+        if (volumeDialogType == 0) {
+            return axionVolumeDialogPlugin.get();
+        }
+        return volumeDialogProvider.get();
+    }
 }
