@@ -7742,6 +7742,18 @@ public final class Settings {
         public static final String ENABLE_ROTATION_BUTTON = "enable_rotation_button";
 
         /**
+         * Whether to show volume percentage in volume panel
+         * @hide
+         */
+        public static final String SHOW_VOLUME_PERCENTAGE = "show_volume_percentage";
+
+        /**
+         * Whether to show charging animation
+         * @hide
+         */
+        public static final String CHARGING_ANIMATION = "charging_animation";
+
+        /**
          * Force full screen for devices with cutout
          * @hide
          */
