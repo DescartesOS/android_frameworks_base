@@ -180,7 +180,6 @@ constructor(
         authController.addCallback(authControllerCallback)
         updateRippleColor()
         updateUdfpsDependentParams()
-        udfpsController?.addCallback(udfpsControllerCallback)
         configurationController.addCallback(configurationChangedListener)
         keyguardUpdateMonitor.registerCallback(keyguardUpdateMonitorCallback)
         commandRegistry.registerCommand("auth-ripple") { AuthRippleCommand() }
@@ -190,7 +189,6 @@ constructor(
     public override fun onViewDetached() {
         attachHandled = false
         mView.cancelUnlockedRipple()
-        udfpsController?.removeCallback(udfpsControllerCallback)
         authController.removeCallback(authControllerCallback)
         keyguardUpdateMonitor.removeCallback(keyguardUpdateMonitorCallback)
         configurationController.removeCallback(configurationChangedListener)
@@ -371,33 +369,6 @@ constructor(
             }
         }
 
-    private val udfpsControllerCallback =
-        object : UdfpsController.Callback {
-            override fun onFingerDown() {
-                // only show dwell ripple for device entry
-                if (keyguardUpdateMonitor.isFingerprintDetectionRunning &&
-                        udfpsController?.isAnimationEnabled() == false) {
-                    if (SceneContainerFlag.isEnabled) {
-                        authRippleInteractor.sendAuthRippleEvent(
-                            AuthRippleInteractor.AuthRippleEvent.PulseOut
-                        )
-                    } else {
-                        showDwellRipple()
-                    }
-                }
-            }
-
-            override fun onFingerUp() {
-                if (SceneContainerFlag.isEnabled) {
-                    authRippleInteractor.sendAuthRippleEvent(
-                        AuthRippleInteractor.AuthRippleEvent.Retract
-                    )
-                } else if (udfpsController?.isAnimationEnabled() == false) {
-                    rv.retractDwellRipple()
-                }
-            }
-        }
-
     private val authControllerCallback =
         object : AuthController.Callback {
             override fun onAllAuthenticatorsRegistered(modality: Int) {
@@ -414,10 +385,6 @@ constructor(
             if (it.size > 0) {
                 udfpsController = udfpsControllerProvider.get()
                 udfpsRadius = authController.udfpsRadius
-
-                if (mView.isAttachedToWindow) {
-                    udfpsController?.addCallback(udfpsControllerCallback)
-                }
             }
         }
     }
