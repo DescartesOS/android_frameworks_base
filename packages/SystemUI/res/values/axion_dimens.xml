@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+    SPDX-License-Identifier: Apache-2.0
+-->
+<resources>
+    <dimen name="udfps_animation_drawable_size">232dp</dimen>
+</resources>
