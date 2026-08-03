@@ -7855,6 +7855,27 @@ public final class Settings {
         public static final String RECENTS_LOCKED_TASKS = "recents_locked_tasks";
 
         /**
+         * @hide
+         */
+        public static final String VEHICLE_MOTION_CUES = "vehicle_motion_cues";
+
+        /**
+         * @hide
+         */
+        public static final String VEHICLE_MOTION_CUES_DOT_SIZE = "vehicle_motion_cues_dot_size";
+
+        /**
+         * @hide
+         */
+        public static final String VEHICLE_MOTION_CUES_SENSITIVITY =
+                "vehicle_motion_cues_sensitivity";
+
+        /**
+         * @hide
+         */
+        public static final String VEHICLE_MOTION_CUES_DOT_COUNT = "vehicle_motion_cues_dot_count";
+
+        /**
          * Keys we no longer back up under the current schema, but want to continue to
          * process when restoring historical backup datasets.
          *

@@ -38,6 +38,10 @@ public class SystemSettings {
 
     private static String[] getSettingsToBackUp() {
         List<String> settings = new ArrayList<>(List.of(
+                Settings.System.VEHICLE_MOTION_CUES,
+                Settings.System.VEHICLE_MOTION_CUES_DOT_SIZE,
+                Settings.System.VEHICLE_MOTION_CUES_SENSITIVITY,
+                Settings.System.VEHICLE_MOTION_CUES_DOT_COUNT,
                 Settings.System.STAY_ON_WHILE_PLUGGED_IN,   // moved to global
                 Settings.System.WIFI_USE_STATIC_IP,
                 Settings.System.WIFI_STATIC_IP,

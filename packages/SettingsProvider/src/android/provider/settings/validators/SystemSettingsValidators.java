@@ -294,5 +294,12 @@ public class SystemSettingsValidators {
         VALIDATORS.put(
                 System.ACCESSIBILITY_FORCE_INVERT_COLOR_OVERRIDE_PACKAGES_TO_DISABLE,
                 new PackageNameListValidator(","));
+        VALIDATORS.put(System.VEHICLE_MOTION_CUES, BOOLEAN_VALIDATOR);
+        VALIDATORS.put(
+                System.VEHICLE_MOTION_CUES_DOT_SIZE, new InclusiveFloatRangeValidator(6f, 24f));
+        VALIDATORS.put(
+                System.VEHICLE_MOTION_CUES_SENSITIVITY, new InclusiveFloatRangeValidator(5f, 35f));
+        VALIDATORS.put(
+                System.VEHICLE_MOTION_CUES_DOT_COUNT, new InclusiveIntegerRangeValidator(6, 24));
     }
 }
