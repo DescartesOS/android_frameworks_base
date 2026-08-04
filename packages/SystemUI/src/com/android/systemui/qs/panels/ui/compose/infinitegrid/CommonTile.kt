@@ -267,7 +267,7 @@ fun LargeTileContent(
         Box(
             modifier =
                 Modifier.padding(8.dp).drawBehind {
-                    drawCircle(colors.circleAroundIcon, radius = size.width * 1.2f)
+                    drawCircle(colors.circleAroundIcon)
                 },
             contentAlignment = Alignment.Center,
         ) {

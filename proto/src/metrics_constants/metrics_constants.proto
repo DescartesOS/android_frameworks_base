@@ -7447,5 +7447,6 @@ message MetricsEvent {
 
     // crDroid Settings
     CRDROID_SETTINGS = 4000;
+    CUSTOM = 5000;
   }
 }
