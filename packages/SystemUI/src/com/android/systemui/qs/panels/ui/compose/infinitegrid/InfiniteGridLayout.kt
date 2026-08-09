@@ -38,6 +38,7 @@ import com.android.systemui.haptics.msdl.qs.TileHapticsViewModel
 import com.android.systemui.lifecycle.rememberViewModel
 import com.android.systemui.qs.panels.shared.model.SizedTileImpl
 import com.android.systemui.qs.panels.ui.compose.EditTileListState
+import com.android.systemui.qs.panels.ui.compose.LocalIsPaginatedGrid
 import com.android.systemui.qs.panels.ui.compose.PaginatableGridLayout
 import com.android.systemui.qs.panels.ui.compose.TileListener
 import com.android.systemui.qs.panels.ui.compose.bounceableInfo
@@ -54,6 +55,14 @@ import com.android.systemui.res.R
 import com.android.systemui.shade.shared.flag.DualShadeFlag
 import javax.inject.Inject
 import kotlinx.coroutines.launch
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.requiredHeight
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.unit.dp
+import com.android.systemui.development.ui.compose.BuildNumber
+import com.android.systemui.development.ui.viewmodel.BuildNumberViewModel
 
 @SysUISingleton
 class InfiniteGridLayout
@@ -64,12 +73,15 @@ constructor(
     override val viewModelFactory: InfiniteGridViewModel.Factory,
     private val textFeedbackContentViewModelFactory: TextFeedbackContentViewModel.Factory,
     private val tileHapticsViewModelFactory: TileHapticsViewModel.Factory,
+    private val buildNumberViewModelFactory: BuildNumberViewModel.Factory,
 ) : PaginatableGridLayout {
 
     @Composable
     override fun ContentScope.TileGrid(
         tiles: List<TileViewModel>,
         modifier: Modifier,
+        columnsOverride: Int?,
+        forceLargeTiles: Boolean,
         listening: () -> Boolean,
         enableRevealEffect: Boolean,
     ) {
@@ -84,55 +96,74 @@ constructor(
                 textFeedbackContentViewModelFactory.create(context)
             }
 
-        val columns = viewModel.columnsWithMediaViewModel.columns
+        val columns = columnsOverride ?: viewModel.columnsWithMediaViewModel.columns
         val largeTilesSpan = viewModel.columnsWithMediaViewModel.largeSpan
         val largeTiles by viewModel.iconTilesViewModel.largeTilesState
         // Tiles or largeTiles may be updated while this is composed, so listen to any changes
         val sizedTiles =
-            remember(tiles, largeTiles, largeTilesSpan) {
+            remember(tiles, largeTiles, largeTilesSpan, forceLargeTiles, columns) {
                 tiles.map {
-                    SizedTileImpl(it, if (largeTiles.contains(it.spec)) largeTilesSpan else 1)
+                    SizedTileImpl(
+                        it,
+                        if (forceLargeTiles) columns
+                        else if (largeTiles.contains(it.spec)) largeTilesSpan
+                        else 1
+                    )
                 }
             }
         val squishiness by viewModel.squishinessViewModel.squishiness.collectAsStateWithLifecycle()
         val scope = rememberCoroutineScope()
 
-        val classicStyle = rememberQSPanelStyle()
-
         val bounceables =
             remember(sizedTiles) { List(sizedTiles.size) { BounceableTileViewModel() } }
         val spans by remember(sizedTiles) { derivedStateOf { sizedTiles.fastMap { it.width } } }
-        VerticalSpannedGrid(
-            columns = columns,
-            columnSpacing = dimensionResource(R.dimen.qs_tile_margin_horizontal),
-            rowSpacing = dimensionResource(R.dimen.qs_tile_margin_vertical),
-            spans = spans,
-            keys = { sizedTiles[it].tile.spec },
-            modifier = modifier,
-        ) { spanIndex, column, isFirstInColumn, isLastInColumn ->
-            val it = sizedTiles[spanIndex]
+        val isPaginated = LocalIsPaginatedGrid.current
+        val isMainGrid = columnsOverride == null && !forceLargeTiles
+        val tileSquishiness: () -> Float = if (isMainGrid) ({ squishiness }) else ({ 1f })
 
-            Element(it.tile.spec.toElementKey(), Modifier) {
-                Tile(
-                    tile = it.tile,
-                    iconOnly = classicStyle || iconTilesViewModel.isIconTile(it.tile.spec),
-                    squishiness = { squishiness },
-                    tileHapticsViewModelFactory = tileHapticsViewModelFactory,
-                    coroutineScope = scope,
-                    bounceableInfo =
-                        bounceables.bounceableInfo(
-                            it,
-                            index = spanIndex,
-                            column = column,
-                            columns = columns,
-                            isFirstInRow = isFirstInColumn,
-                            isLastInRow = isLastInColumn,
-                        ),
-                    detailsViewModel = detailsViewModel,
-                    isVisible = listening,
-                    requestToggleTextFeedback = textFeedbackViewModel::requestShowFeedback,
-                    enableRevealEffect = enableRevealEffect,
-                )
+        Column(modifier) {
+            VerticalSpannedGrid(
+                columns = columns,
+                columnSpacing = dimensionResource(R.dimen.qs_tile_margin_horizontal),
+                rowSpacing = dimensionResource(R.dimen.qs_tile_margin_vertical),
+                spans = spans,
+                keys = { sizedTiles[it].tile.spec },
+                modifier = Modifier,
+            ) { spanIndex, column, isFirstInColumn, isLastInColumn ->
+                val it = sizedTiles[spanIndex]
+
+                Element(it.tile.spec.toElementKey(), Modifier) {
+                    Tile(
+                        tile = it.tile,
+                        iconOnly = if (forceLargeTiles) false else iconTilesViewModel.isIconTile(it.tile.spec),
+                        squishiness = tileSquishiness,
+                        isHeaderTile = !isMainGrid,
+                        tileHapticsViewModelFactory = tileHapticsViewModelFactory,
+                        coroutineScope = scope,
+                        bounceableInfo =
+                            bounceables.bounceableInfo(
+                                it,
+                                index = spanIndex,
+                                column = column,
+                                columns = columns,
+                                isFirstInRow = isFirstInColumn,
+                                isLastInRow = isLastInColumn,
+                            ),
+                        detailsViewModel = detailsViewModel,
+                        isVisible = listening,
+                        requestToggleTextFeedback = textFeedbackViewModel::requestShowFeedback,
+                        enableRevealEffect = enableRevealEffect,
+                    )
+                }
+            }
+
+            if (!isPaginated && isMainGrid) {
+                Row(
+                    modifier = Modifier.requiredHeight(48.dp).fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    BuildNumber(viewModelFactory = buildNumberViewModelFactory)
+                }
             }
         }
 
