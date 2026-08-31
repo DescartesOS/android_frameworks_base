@@ -216,7 +216,9 @@ import com.android.systemui.surfaceeffects.core.ripple.RippleShader.RippleShape;
 import com.android.systemui.topui.TopUiController;
 import com.android.systemui.tuner.TunerService;
 import com.android.systemui.util.DumpUtilsKt;
+import com.android.systemui.util.ScrimUtils;
 import com.android.systemui.util.WallpaperController;
+import com.android.systemui.util.WallpaperDepthUtils;
 import com.android.systemui.util.concurrency.DelayableExecutor;
 import com.android.systemui.util.concurrency.MessageRouter;
 import com.android.systemui.util.kotlin.JavaAdapter;
@@ -459,6 +461,8 @@ public class CentralSurfacesImpl implements CoreStartable, CentralSurfaces,
     protected DozeScrimController mDozeScrimController;
     private final JavaAdapter mJavaAdapter;
     private final Executor mUiBgExecutor;
+
+    private WallpaperDepthUtils mWallpaperDepthUtils;
 
     protected boolean mDozing;
     boolean mCloseQsBeforeScreenOff;
@@ -1107,6 +1111,35 @@ public class CentralSurfacesImpl implements CoreStartable, CentralSurfaces,
             mScrimController.attachViews(scrimBehind, notificationsScrim, scrimInFront);
         }
 
+        mWallpaperDepthUtils = WallpaperDepthUtils.getInstance(mContext, mScrimController);
+
+        // Setup depth wallpaper view - insert between clock and notifications
+        // Z-order: wallpaper -> clock -> depth image -> notifications
+        ViewGroup root = getNotificationShadeWindowView();
+        View depthWallpaperView = mWallpaperDepthUtils.getDepthWallpaperView();
+        if (depthWallpaperView.getParent() == null) {
+            root.setClipChildren(false);
+            root.setClipToPadding(false);
+            // Insert after KeyguardRootView (clock) but before SharedNotificationContainer
+            View keyguardRootView = root.findViewById(R.id.keyguard_root_view);
+            int insertIndex = keyguardRootView != null ? root.indexOfChild(keyguardRootView) + 1 : -1;
+            if (insertIndex >= 0) {
+                root.addView(depthWallpaperView, insertIndex);
+            } else {
+                root.addView(depthWallpaperView);
+            }
+        }
+
+        View keyguardHeader = root.findViewById(R.id.keyguard_header);
+        if (keyguardHeader != null) {
+            keyguardHeader.setTranslationZ(10f);
+        }
+        ScrimUtils.get(mContext).setWallpaperDepthUtils(mWallpaperDepthUtils);
+        mWallpaperDepthUtils.updateDepthWallpaper();
+        mWallpaperDepthUtils.updateDepthWallpaperVisibility();
+        depthWallpaperView.postDelayed(() -> {
+            mWallpaperDepthUtils.updateDepthWallpaperVisibility();
+        }, 500);
         mLightRevealScrim.setScrimOpaqueChangedListener((opaque) -> {
             Runnable updateOpaqueness = () -> {
                 mNotificationShadeWindowController.setLightRevealScrimOpaque(
