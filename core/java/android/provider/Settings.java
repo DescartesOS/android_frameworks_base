@@ -7059,6 +7059,11 @@ public final class Settings {
         public static final String STATUS_BAR_CLOCK_BOLD = "status_bar_clock_bold";
 
         /**
+         * @hide
+         */
+        public static final String STATUS_BAR_SHOW_DYNAMIC_ISLAND = "status_bar_show_dynamic_island";
+
+        /**
          * Statusbar clock background
          * 0 - hide accented chip  (default)
          * 1 - show accented chip

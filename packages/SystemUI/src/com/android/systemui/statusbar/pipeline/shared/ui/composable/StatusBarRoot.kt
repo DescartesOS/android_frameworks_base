@@ -117,7 +117,10 @@ import com.android.systemui.statusbar.pipeline.battery.ui.composable.BatteryWith
 import com.android.systemui.statusbar.pipeline.battery.ui.viewmodel.BatteryViewModel
 import com.android.systemui.statusbar.pipeline.shared.ui.binder.HomeStatusBarIconBlockListBinder
 import com.android.systemui.statusbar.pipeline.shared.ui.binder.HomeStatusBarTouchExclusionRegionBinder
+import com.android.systemui.statusbar.quickactions.shared.model.QuickActionChipId
+import com.android.systemui.statusbar.quickactions.shared.model.QuickActionChipModel
 import com.android.systemui.statusbar.pipeline.shared.ui.binder.HomeStatusBarViewBinder
+import com.android.systemui.statusbar.quickactions.ui.compose.StatusBarDynamicIslandContainer
 import com.android.systemui.statusbar.pipeline.shared.ui.view.SystemStatusIconsLayoutHelper
 import com.android.systemui.statusbar.pipeline.shared.ui.viewmodel.HomeStatusBarViewModel
 import com.android.systemui.statusbar.pipeline.shared.ui.viewmodel.HomeStatusBarViewModel.HomeStatusBarViewModelFactory
@@ -339,6 +342,36 @@ fun StatusBarRoot(
                     )
                 }
 
+                // Add a composable container for `QuickActionChip`s (Music Ticker, etc.)
+                val centeredArea =
+                    phoneStatusBarView.requireViewById<AlphaOptimizedLinearLayout>(
+                        R.id.centered_area
+                    )
+
+                val composeView =
+                    ComposeView(context).apply {
+                        layoutParams =
+                            LinearLayout.LayoutParams(
+                                LinearLayout.LayoutParams.WRAP_CONTENT,
+                                LinearLayout.LayoutParams.WRAP_CONTENT,
+                            ).apply { gravity = Gravity.CENTER }
+
+                        setViewCompositionStrategy(
+                            if (SceneContainerFlag.isEnabled) {
+                                ViewCompositionStrategy.Default
+                            } else {
+                                ViewCompositionStrategy.DisposeOnViewTreeLifecycleDestroyed
+                            }
+                        )
+
+                        setContent {
+                            StatusBarDynamicIslandContainer(
+                                chips = statusBarViewModel.popupChips.filterIsInstance<QuickActionChipModel.PopupChip>(),
+                                onMediaControlPopupVisibilityChanged = {},
+                            )
+                        }
+                    }
+                centeredArea.addView(composeView)
                 // This binder handles everything else
                 statusBarViewBinder.bind(
                     context.displayId,
@@ -523,7 +556,9 @@ private fun addStartSideComposable(
                     )
                 }
                 val chipsVisibilityModel = statusBarViewModel.ongoingActivityChips
-                if (chipsVisibilityModel.areChipsAllowed) {
+                val shouldHideLegacyScreenRecordChip =
+                    statusBarViewModel.popupChips.any { it.chipId == QuickActionChipId.ScreenRecord }
+                if (chipsVisibilityModel.areChipsAllowed && !shouldHideLegacyScreenRecordChip) {
                     OngoingActivityChips(
                         chips = chipsVisibilityModel.chips,
                         iconViewStore = iconViewStore,

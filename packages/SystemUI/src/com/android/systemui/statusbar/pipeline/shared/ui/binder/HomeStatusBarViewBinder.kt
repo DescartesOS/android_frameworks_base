@@ -89,6 +89,7 @@ class HomeStatusBarViewBinderImpl @Inject constructor() : HomeStatusBarViewBinde
         val denyListed: Boolean,
         val hideForHun: Boolean,
         val chipStyle: Int,
+        val dynamicIslandEnabled: Boolean = false,
         val position: Int,
         val visibilityModel: VisibilityModel,
     )
@@ -141,6 +142,8 @@ class HomeStatusBarViewBinderImpl @Inject constructor() : HomeStatusBarViewBinde
                             denyListed = false,
                             hideForHun = false,
                             chipStyle = 0,
+                            dynamicIslandEnabled =
+                                context.contentResolver.readDynamicIslandEnabled(),
                             position = context.contentResolver.readClockPosition(),
                             visibilityModel = VisibilityModel(View.GONE, true),
                         )
@@ -156,6 +159,8 @@ class HomeStatusBarViewBinderImpl @Inject constructor() : HomeStatusBarViewBinde
                     LineageSettings.System.getUriFor(LineageSettings.System.STATUS_BAR_CLOCK)
                 val statusBarClockChipUri: Uri =
                     Settings.System.getUriFor(Settings.System.STATUSBAR_CLOCK_CHIP)
+                val dynamicIslandUri: Uri =
+                    Settings.System.getUriFor(Settings.System.STATUS_BAR_SHOW_DYNAMIC_ISLAND)
 
                 val taskStackListener =
                     object : TaskStackChangeListener {
@@ -232,13 +237,18 @@ class HomeStatusBarViewBinderImpl @Inject constructor() : HomeStatusBarViewBinde
                                             chipStyle = chipStyle
                                         )
                                     }
+                                    dynamicIslandUri ->
+                                        current.copy(
+                                            dynamicIslandEnabled =
+                                                context.contentResolver.readDynamicIslandEnabled()
+                                       )
                                     else -> current
                                 }
                             }
                         }
                     }
 
-                val urisToObserve = listOf(clockAutoHideUri, iconHideListUri, statusBarClockUri, statusBarClockChipUri)
+                val urisToObserve = listOf(clockAutoHideUri, iconHideListUri, statusBarClockUri, statusBarClockChipUri, dynamicIslandUri)
                 urisToObserve.forEach { uri ->
                     context.contentResolver.registerContentObserver(
                         uri,
@@ -355,7 +365,9 @@ class HomeStatusBarViewBinderImpl @Inject constructor() : HomeStatusBarViewBinde
                                     state.visibilityModel.visibility == View.VISIBLE &&
                                         !hunBlocksClock &&
                                         !state.autoHide &&
-                                        !state.denyListed
+                                        !state.denyListed &&
+                                        !(state.position == CLOCK_POSITION_CENTER &&
+                                            state.dynamicIslandEnabled)
                                 ) {
                                     state.visibilityModel
                                 } else {
@@ -447,6 +459,15 @@ class HomeStatusBarViewBinderImpl @Inject constructor() : HomeStatusBarViewBinde
             0,
             UserHandle.USER_CURRENT,
         )
+    }
+
+    private fun ContentResolver.readDynamicIslandEnabled(): Boolean {
+        return Settings.System.getIntForUser(
+            this,
+            Settings.System.STATUS_BAR_SHOW_DYNAMIC_ISLAND,
+            0,
+            UserHandle.USER_CURRENT,
+        ) != 0
     }
 
     private fun ContentResolver.readClockPosition(): Int {
