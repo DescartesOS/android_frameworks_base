@@ -7087,6 +7087,13 @@ public final class Settings {
          * @hide
          */
         public static final String STATUS_BAR_DYNAMIC_ISLAND_LIVE_SCORES = "status_bar_dynamic_island_live_scores";
+
+        /**
+         * @hide
+         */
+        public static final String STATUS_BAR_DYNAMIC_ISLAND_LYRICS = "status_bar_dynamic_island_lyrics";
+
+        /**
          * Statusbar clock background
          * 0 - hide accented chip  (default)
          * 1 - show accented chip
