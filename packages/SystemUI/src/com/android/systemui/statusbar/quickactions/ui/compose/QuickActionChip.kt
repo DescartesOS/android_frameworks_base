@@ -33,23 +33,36 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.FastOutSlowInEasing
+import androidx.compose.animation.core.keyframes
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.minimumInteractiveComponentSize
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawWithCache
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.graphics.BlendMode
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.CompositingStrategy
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.layout.LayoutCoordinates
+import androidx.compose.ui.layout.boundsInRoot
 import androidx.compose.ui.layout.layout
+import androidx.compose.ui.layout.onGloballyPositioned
+import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.res.dimensionResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
@@ -66,6 +79,10 @@ import com.android.systemui.res.R
 import com.android.systemui.statusbar.chips.ui.viewmodel.rememberChronometerState
 import com.android.systemui.statusbar.quickactions.shared.model.ChipContent
 import com.android.systemui.statusbar.quickactions.shared.model.ChipIcon
+import kotlinx.coroutines.coroutineScope
+import kotlinx.coroutines.flow.collectLatest
+import kotlinx.coroutines.flow.drop
+import kotlinx.coroutines.launch
 
 /**
  * A clickable chip that can show an anchored popup containing relevant system controls. The chip
@@ -94,6 +111,7 @@ fun QuickActionChip(
                     8.dp
                 else 4.dp,
         ),
+    onChipBoundsChanged: (Rect) -> Unit = {},
 ) {
     val hoveredState by interactionSource.collectIsHoveredAsState()
     val indication = if (hoveredState) null else LocalIndication.current
@@ -101,6 +119,9 @@ fun QuickActionChip(
     val chipBackgroundColor =
         colors.chipBackground(isSelected = isSelected, colorScheme = MaterialTheme.colorScheme)
 
+    val view = LocalView.current
+    var toggleCount by remember { mutableStateOf(0) }
+    LaunchedEffect(isSelected) { toggleCount++ }
     // Use a Box with `fillMaxHeight` to create a larger click surface for the chip. The visible
     // height of the chip is determined by the height of the background of the Row below. The
     // `indication` for Clicks is applied in the Row below as well.
@@ -109,6 +130,10 @@ fun QuickActionChip(
         modifier =
             modifier
                 .minimumInteractiveComponentSize()
+                .onGloballyPositioned { coordinates ->
+                    onChipBoundsChanged(coordinates.boundsInScreen(view))
+                }
+                .squishAnimation(toggleCount)
                 .contentDescription(contentDescription)
                 .clickable(
                     onClick = onClick,
@@ -271,4 +296,54 @@ private fun Modifier.overflowFadeOut(hasOverflow: () -> Boolean, fadeLength: Dp)
 private fun Modifier.contentDescription(description: ContentDescription?): Modifier {
     val resolvedDescription = description?.load() ?: return this
     return this.semantics { contentDescription = resolvedDescription }
+}
+private fun LayoutCoordinates.boundsInScreen(view: android.view.View): Rect {
+    val location = IntArray(2)
+    view.getLocationOnScreen(location)
+    return boundsInRoot().translate(Offset(location[0].toFloat(), location[1].toFloat()))
+}
+
+@Composable
+private fun Modifier.squishAnimation(toggleCount: Int): Modifier {
+    val scaleX = remember { Animatable(1f, visibilityThreshold = 0.01f) }
+    val scaleY = remember { Animatable(1f, visibilityThreshold = 0.01f) }
+    val currentToggleCount by rememberUpdatedState(toggleCount)
+    LaunchedEffect(Unit) {
+        snapshotFlow { currentToggleCount }
+            .drop(1)
+            .collectLatest {
+                scaleX.snapTo(1f)
+                scaleY.snapTo(1f)
+                coroutineScope {
+                    launch {
+                        scaleX.animateTo(
+                            targetValue = 1f,
+                            animationSpec =
+                                keyframes {
+                                    durationMillis = 400
+                                    1.066f at 120 using FastOutSlowInEasing
+                                    0.967f at 260
+                                    1f at 400
+                                },
+                        )
+                    }
+                    launch {
+                        scaleY.animateTo(
+                            targetValue = 1f,
+                            animationSpec =
+                                keyframes {
+                                    durationMillis = 400
+                                    0.945f at 120 using FastOutSlowInEasing
+                                    1.033f at 260
+                                    1f at 400
+                                },
+                        )
+                    }
+                }
+            }
+    }
+    return this.graphicsLayer {
+        this.scaleX = scaleX.value
+        this.scaleY = scaleY.value
+    }
 }
