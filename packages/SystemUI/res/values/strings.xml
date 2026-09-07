@@ -14,6 +14,11 @@
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
  * See the License for the specific language governing permissions and
  * limitations under the License.
+ *
+ * Changes from Qualcomm Innovation Center are provided under the following license:
+ *
+ * Copyright (c) 2022 Qualcomm Innovation Center, Inc. All rights reserved.
+ * SPDX-License-Identifier: BSD-3-Clause-Clear
  */
 -->
 <resources xmlns:xliff="urn:oasis:names:tc:xliff:document:1.2">
@@ -400,20 +405,6 @@
     <string name="screenrecord_stop_dialog_message_specific_app">You\'re currently recording <xliff:g id="app_name" example="Photos App">%1$s</xliff:g></string>
     <!-- Button to stop a screen recording [CHAR LIMIT=35] -->
     <string name="screenrecord_stop_dialog_button">Stop recording</string>
-    <string name="dynamic_island_screen_record_short">REC</string>
-    <string name="dynamic_island_screen_record_active">Recording is active</string>
-    <string name="dynamic_island_screen_record_countdown">Starts in %1$ss</string>
-    <string name="dynamic_island_alarm_title">Next alarm</string>
-    <string name="dynamic_island_flashlight_enabled">Enabled</string>
-    <string name="dynamic_island_flashlight_short">ON</string>
-    <string name="dynamic_island_open_action">Open</string>
-    <string name="dynamic_island_open_clock_action">Open clock</string>
-    <string name="dynamic_island_stopwatch_title">Stopwatch</string>
-    <string name="dynamic_island_alarm_active_title">Alarm</string>
-    <string name="dynamic_island_action_snooze">Snooze</string>
-    <string name="dynamic_island_action_lap">Lap</string>
-    <string name="dynamic_island_action_stop">Stop</string>
-    <string name="dynamic_island_action_resume">Resume</string>
 
     <!-- Screen recording should record entire screen [CHAR LIMIT=35] -->
     <string name="screen_record_entire_screen">Entire screen</string>
@@ -855,6 +846,7 @@
     <!-- Content description of the bluetooth device settings see all. [CHAR LIMIT=NONE] -->
     <string name="accessibility_bluetooth_device_settings_see_all">See all devices</string>
     <!-- Content description of the bluetooth device settings pair new device. [CHAR LIMIT=NONE] -->
+
     <string name="accessibility_bluetooth_device_settings_pair_new_device">Pair new device</string>
     <!-- Content description of the battery when battery state is unknown for accessibility (not shown on the screen). [CHAR LIMIT=NONE] -->
     <string name="accessibility_battery_unknown">Battery percentage unknown.</string>
@@ -2445,6 +2437,7 @@
     <!-- Button in QS edit mode to remove the selected tile [CHAR LIMIT=12] -->
     <string name="qs_customize_remove">Remove</string>
 
+
     <!-- Dialog title asking if Bluetooth should be enabled [CHAR LIMIT=NONE] -->
     <string name="enable_bluetooth_title">Turn on Bluetooth?</string>
 
@@ -2913,7 +2906,7 @@
     <string name="group_system_access_all_apps_search">Open apps list</string>
     <!-- User visible title for the keyboard shortcut that accesses [system] settings. [CHAR LIMIT=70] -->
     <string name="group_system_access_system_settings">Open settings</string>
-    <!-- User visible title for the keyboard shortcut that accesses the default digital assistant app. [CHAR LIMIT=70] -->
+    <!-- User visible title for the keyboard shortcut that accesses Assistant app. [CHAR LIMIT=70] -->
     <string name="group_system_access_google_assistant">Open digital assistant</string>
     <!-- User visible title for the keyboard shortcut that opens contextual search. [CHAR LIMIT=70] -->
     <string name="group_system_access_contextual_search">Contextual Search</string>
@@ -2931,7 +2924,7 @@
     <!-- User visible title for the keyboard shortcut that enters split screen with current app on the left [CHAR LIMIT=70] -->
     <string name="system_multitasking_lhs">Use split screen with app on the left</string>
     <!-- User visible title for the keyboard shortcut that switches from split screen to full screen [CHAR LIMIT=70] -->
-    <string name="system_multitasking_full_screen">Use full screen</string>
+    <string name="system_multitasking_full_screen">Switch to full screen</string>
     <!-- User visible title for the keyboard shortcut that switches to desktop windowing [CHAR LIMIT=70] -->
     <string name="system_multitasking_desktop_view">Use desktop windowing</string>
     <!-- User visible title for the keyboard shortcut that switches to app on right or below while using split screen [CHAR LIMIT=70] -->
@@ -3168,6 +3161,12 @@
 
     <!-- SysUI Tuner: Switch for showing low-priority notification icons in status bar [CHAR LIMIT=NONE] -->
     <string name="tuner_low_priority">Show low-priority notification icons</string>
+
+    <string name="bluetooth_battery_title">Bluetooth battery level</string>
+
+    <string name="mic_camera_privacy_indicator_title">Mic and camera privacy indicator</string>
+    <string name="location_privacy_indicator_title">Location privacy indicator</string>
+    <string name="projection_privacy_indicator_title">Media projection privacy indicator</string>
 
     <!-- SysUI Tuner: Other section -->
     <string name="other">Other</string>
@@ -3489,6 +3488,17 @@
 
     <!-- Message body of the dialog to turn off data usage [CHAR LIMIT=NONE] -->
     <string name="mobile_data_disable_message">You won\’t have access to data or the internet through <xliff:g id="carrier" example="T-Mobile">%s</xliff:g>. Internet will only be available via Wi-Fi.</string>
+
+    <string name="mobile_data_disable_message_on_dual_data">You won\’t have access to data or the internet through <xliff:g id="carrier" example="T-Mobile">%s</xliff:g>.</string>
+
+    <!-- Message body of the dialog to turn off mobile data when IMS is registered on C_IWLAN, UE is in C_IWLAN-only mode, and device is in a call [CHAR LIMIT=NONE] -->
+    <string name="data_disable_ciwlan_call_will_drop_message">Disabling mobile data will cause ongoing call drop.</string>
+
+    <!-- Message body of the dialog to turn off mobile data when IMS is registered on C_IWLAN, UE might be in C_IWLAN-only mode, and device is in a call [CHAR LIMIT=NONE] -->
+    <string name="data_disable_ciwlan_call_might_drop_message">Disabling mobile data might cause ongoing call drop.</string>
+
+    <!-- Internet dialog, summary of mobile network when there is an ongoing call on the non default data subscription. [CHAR LIMIT=NONE] -->
+    <string name="mobile_data_summary_not_allowed_to_disable_data">Unavailable during a call on the other SIM</string>
 
     <!-- Text used to refer to the user's current carrier in mobile_data_disable_message if the users's mobile network carrier name is not available [CHAR LIMIT=NONE] -->
     <string name="mobile_data_disable_message_default_carrier">your carrier</string>
@@ -5076,4 +5086,10 @@
     <!-- Accessibility label for the thumbs down button on attribution dialog. [CHAR_LIMIT=NONE] -->
     <string name="ace_attribution_thumbs_down_button_accessibility_description">Thumbs down feedback button</string>
 
+    <!-- App picker -->
+    <string name="app_picker_dialog_title">Select an app</string>
+    <string name="active_edge_app_select_title">Select app</string>
+    <string name="active_edge_activity_select_title">Select activity</string>
+    <!-- Title of the expanded Quick Settings connectivity folder [CHAR LIMIT=30] -->
+    <string name="quick_settings_connectivity_folder_title">Connectivity</string>
 </resources>

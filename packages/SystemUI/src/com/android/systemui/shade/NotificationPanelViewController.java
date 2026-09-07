@@ -50,34 +50,29 @@ import static java.lang.Float.isNaN;
 import android.animation.Animator;
 import android.animation.AnimatorListenerAdapter;
 import android.animation.ValueAnimator;
+import androidx.dynamicanimation.animation.DynamicAnimation;
+import androidx.dynamicanimation.animation.FloatPropertyCompat;
+import androidx.dynamicanimation.animation.SpringAnimation;
+import androidx.dynamicanimation.animation.SpringForce;
 import android.annotation.NonNull;
 import android.annotation.Nullable;
 import android.content.ContentResolver;
-import android.content.Context;
 import android.content.res.Configuration;
 import android.content.res.Resources;
-import android.database.ContentObserver;
 import android.graphics.Color;
 import android.graphics.Insets;
 import android.graphics.Rect;
 import android.graphics.Region;
 import android.graphics.RenderEffect;
-import android.graphics.drawable.Animatable;
 import android.graphics.Shader;
-import android.graphics.drawable.Drawable;
-import android.graphics.drawable.TransitionDrawable;
 import android.os.Build;
 import android.os.Bundle;
-import android.os.Handler;
-import android.os.PowerManager;
 import android.os.Trace;
-import android.provider.Settings;
+import android.util.BoostFramework;
 import android.util.IndentingPrintWriter;
 import android.util.Log;
 import android.util.MathUtils;
-import android.util.TypedValue;
 import android.view.Display;
-import android.view.GestureDetector;
 import android.view.HapticFeedbackConstants;
 import android.view.InputDevice;
 import android.view.MotionEvent;
@@ -85,14 +80,12 @@ import android.view.VelocityTracker;
 import android.view.View;
 import android.view.View.AccessibilityDelegate;
 import android.view.ViewConfiguration;
-import android.view.ViewGroup;
 import android.view.ViewPropertyAnimator;
 import android.view.ViewTreeObserver;
 import android.view.WindowInsets;
 import android.view.accessibility.AccessibilityEvent;
 import android.view.accessibility.AccessibilityManager;
 import android.view.accessibility.AccessibilityNodeInfo;
-import android.widget.ImageView;
 
 import com.android.app.animation.Interpolators;
 import com.android.internal.annotations.VisibleForTesting;
@@ -102,6 +95,8 @@ import com.android.internal.policy.SystemBarUtils;
 import com.android.internal.statusbar.IStatusBarService;
 import com.android.internal.util.LatencyTracker;
 import com.android.keyguard.ActiveUnlockConfig;
+import com.android.keyguard.EmergencyButton;
+import com.android.keyguard.EmergencyButtonController;
 import com.android.keyguard.KeyguardUnfoldTransition;
 import com.android.keyguard.KeyguardUpdateMonitor;
 import com.android.keyguard.dagger.KeyguardStatusBarViewComponent;
@@ -115,7 +110,6 @@ import com.android.systemui.brightness.domain.interactor.BrightnessMirrorShowing
 import com.android.systemui.classifier.Classifier;
 import com.android.systemui.classifier.FalsingCollector;
 import com.android.systemui.common.domain.interactor.SysUIStateDisplaysInteractor;
-import com.android.systemui.crdroid.header.StatusBarHeaderMachine;
 import com.android.systemui.dagger.SysUISingleton;
 import com.android.systemui.dagger.qualifiers.DisplayId;
 import com.android.systemui.dagger.qualifiers.Main;
@@ -208,15 +202,13 @@ import com.android.systemui.statusbar.phone.UnlockedScreenOffAnimationController
 import com.android.systemui.statusbar.policy.ConfigurationController;
 import com.android.systemui.statusbar.policy.KeyguardStateController;
 import com.android.systemui.statusbar.policy.SplitShadeStateController;
-import com.android.systemui.tuner.TunerService;
+import com.android.systemui.statusbar.policy.StatusBarBrightnessGesture;
 import com.android.systemui.unfold.SysUIUnfoldComponent;
 import com.android.systemui.util.ScrimUtils;
 import com.android.systemui.util.Utils;
 import com.android.systemui.util.time.SystemClock;
 import com.android.systemui.window.domain.interactor.WindowRootViewBlurInteractor;
 import com.android.wm.shell.animation.FlingAnimationUtils;
-
-import com.bosphere.fadingedgelayout.FadingEdgeLayout;
 
 import dalvik.annotation.optimization.NeverCompile;
 
@@ -230,8 +222,6 @@ import kotlin.Unit;
 import kotlinx.coroutines.CoroutineDispatcher;
 import kotlinx.coroutines.flow.MutableStateFlow;
 import kotlinx.coroutines.flow.StateFlow;
-
-import lineageos.providers.LineageSettings;
 
 import java.io.PrintWriter;
 import java.util.ArrayList;
@@ -275,21 +265,6 @@ public final class NotificationPanelViewController implements
     private static final String COUNTER_PANEL_OPEN = "panel_open";
     public static final String COUNTER_PANEL_OPEN_QS = "panel_open_qs";
     private static final String COUNTER_PANEL_OPEN_PEEK = "panel_open_peek";
-    private static final String DOUBLE_TAP_SLEEP_GESTURE =
-            "lineagesystem:" + LineageSettings.System.DOUBLE_TAP_SLEEP_GESTURE;
-     private static final String DOUBLE_TAP_SLEEP_LOCKSCREEN =
-             "system:" + Settings.System.DOUBLE_TAP_SLEEP_LOCKSCREEN;
-     private static final String STATUS_BAR_BRIGHTNESS_CONTROL =
-             "system:" + Settings.System.STATUS_BAR_BRIGHTNESS_CONTROL;
-     private static final String STATUS_BAR_BRIGHTNESS_CONTROL_LOCKSCREEN =
-             "system:" + Settings.System.STATUS_BAR_BRIGHTNESS_CONTROL_LOCKSCREEN;
-     private static final String STATUS_BAR_CUSTOM_HEADER =
-             "system:" + Settings.System.STATUS_BAR_CUSTOM_HEADER;
-     private static final String STATUS_BAR_CUSTOM_HEADER_HEIGHT =
-             "system:" + Settings.System.STATUS_BAR_CUSTOM_HEADER_HEIGHT;
-     private static final String STATUS_BAR_CUSTOM_HEADER_SHADOW =
-             "system:" + Settings.System.STATUS_BAR_CUSTOM_HEADER_SHADOW;
-
     private static final Rect M_DUMMY_DIRTY_RECT = new Rect(0, 0, 1, 1);
     private static final Rect EMPTY_RECT = new Rect();
     //TODO(b/394977231) delete this temporary workaround used only by tests
@@ -329,7 +304,6 @@ public final class NotificationPanelViewController implements
     private final ConfigurationController mConfigurationController;
     private final Provider<FlingAnimationUtils.Builder> mFlingAnimationUtilsBuilder;
     private final NotificationStackScrollLayoutController mNotificationStackScrollLayoutController;
-    private final PowerManager mPowerManager;
     private final AccessibilityManager mAccessibilityManager;
     private final NotificationWakeUpCoordinator mWakeUpCoordinator;
     private final PulseExpansionHandler mPulseExpansionHandler;
@@ -366,12 +340,34 @@ public final class NotificationPanelViewController implements
     private final TouchHandler mTouchHandler = new TouchHandler();
     private final BlurConfig mBlurConfig;
     private final WindowRootViewBlurInteractor mWindowRootViewBlurInteractor;
-    private final TunerService mTunerService;
 
     private long mDownTime;
     private long mStatusBarLongPressDowntime = -1L;
     private boolean mTouchSlopExceededBeforeDown;
     private float mOverExpansion;
+
+    /** Drives {@link #setOverExpansionInternal(float)} via a physical spring instead of a
+     * fixed-duration interpolator, so fling velocity carries into the overshoot/settle. */
+    private static final FloatPropertyCompat<NotificationPanelViewController>
+            OVER_EXPANSION_SPRING_PROPERTY =
+            new FloatPropertyCompat<NotificationPanelViewController>("overExpansionSpring") {
+                @Override
+                public float getValue(NotificationPanelViewController controller) {
+                    return controller.mOverExpansion;
+                }
+
+                @Override
+                public void setValue(NotificationPanelViewController controller, float value) {
+                    controller.setOverExpansionInternal(value);
+                }
+            };
+    private SpringAnimation mOverExpansionSpring;
+
+    /** Tunables for the QS/shade overshoot spring. Adjust these to change how "bouncy" the
+     * fling settle feels. Lower stiffness / higher damping ratio = softer, slower settle. */
+    private static final float OVER_EXPANSION_SPRING_STIFFNESS = 450f;
+    private static final float OVER_EXPANSION_SPRING_DAMPING_RATIO =
+            SpringForce.DAMPING_RATIO_LOW_BOUNCY;
     private CentralSurfaces mCentralSurfaces;
     private HeadsUpManager mHeadsUpManager;
     private float mExpandedHeight = 0;
@@ -385,6 +381,10 @@ public final class NotificationPanelViewController implements
     private boolean mAnimateNextPositionUpdate;
     private final ScreenOffAnimationController mScreenOffAnimationController;
     private final UnlockedScreenOffAnimationController mUnlockedScreenOffAnimationController;
+
+    private final EmergencyButtonController.Factory mEmergencyButtonControllerFactory;
+    private EmergencyButtonController mEmergencyButtonController;
+
     private TrackingStartedListener mTrackingStartedListener;
     private OpenCloseListener mOpenCloseListener;
     private GestureRecorder mGestureRecorder;
@@ -507,10 +507,6 @@ public final class NotificationPanelViewController implements
     private final NotificationShadeDepthController mDepthController;
     private final NavigationBarController mNavigationBarController;
     private final int mDisplayId;
-    private boolean mDoubleTapToSleepEnabled;
-    private GestureDetector mDoubleTapGesture;
-
-    private boolean mIsLockscreenDoubleTapEnabled;
 
     private final KeyguardIndicationController mKeyguardIndicationController;
     private int mHeadsUpInset;
@@ -529,7 +525,6 @@ public final class NotificationPanelViewController implements
     private boolean mIsGestureNavigation;
     private int mOldLayoutDirection;
 
-    private final ContentResolver mContentResolver;
     private float mMinFraction;
 
     private final KeyguardMediaController mKeyguardMediaController;
@@ -540,20 +535,6 @@ public final class NotificationPanelViewController implements
     private int mSplitShadeFullTransitionDistance;
     /** The drag distance required to fully transition scrims. */
     private int mSplitShadeScrimTransitionDistance;
-
-    private boolean mBrightnessControl;
-    private boolean mBrightnessControlLockscreen;
-
-    private FadingEdgeLayout mQsHeaderLayout;
-    private ImageView mQsHeaderImageView;
-    private boolean mHeaderImageEnabled;
-    private int mOrientation = -1;
-    private int mHeaderImageHeight;
-    private int mBottomFadeHeight;
-    private int mHeaderImageShadow;
-    private float mShadeHeaderExpansion;
-    private Drawable mCurrentBackground;
-    private StatusBarHeaderMachine mStatusBarHeaderMachine;
 
     private final NotificationListContainer mNotificationListContainer;
     private final NPVCDownEventState.Buffer mLastDownEvents;
@@ -611,6 +592,8 @@ public final class NotificationPanelViewController implements
     private final PowerInteractor mPowerInteractor;
     private final CoroutineDispatcher mMainDispatcher;
     private final SplitShadeStateController mSplitShadeStateController;
+    private BoostFramework mPerf = null;
+
     private final Runnable mFlingCollapseRunnable = () -> fling(0, false /* expand */,
             mNextCollapseSpeedUpFactor, false /* expandBecauseOfFalsing */);
     private final Runnable mHeadsUpExistenceChangedRunnable = () -> {
@@ -630,7 +613,6 @@ public final class NotificationPanelViewController implements
 
     @Inject
     public NotificationPanelViewController(NotificationPanelView view,
-            @Main Handler handler,
             NotificationWakeUpCoordinator coordinator,
             PulseExpansionHandler pulseExpansionHandler,
             DynamicPrivacyController dynamicPrivacyController,
@@ -645,7 +627,6 @@ public final class NotificationPanelViewController implements
             CommandQueue commandQueue,
             VibratorHelper vibratorHelper,
             LatencyTracker latencyTracker,
-            PowerManager powerManager,
             AccessibilityManager accessibilityManager,
             @DisplayId int displayId,
             KeyguardUpdateMonitor keyguardUpdateMonitor,
@@ -673,7 +654,6 @@ public final class NotificationPanelViewController implements
             QuickSettingsControllerImpl quickSettingsController,
             FragmentService fragmentService,
             IStatusBarService statusBarService,
-            ContentResolver contentResolver,
             ShadeHeaderController shadeHeaderController,
             ScreenOffAnimationController screenOffAnimationController,
             LockscreenGestureLogger lockscreenGestureLogger,
@@ -698,6 +678,7 @@ public final class NotificationPanelViewController implements
             ActivityStarter activityStarter,
             SharedNotificationContainerInteractor sharedNotificationContainerInteractor,
             ActiveNotificationsInteractor activeNotificationsInteractor,
+            EmergencyButtonController.Factory emergencyButtonControllerFactory,
             ShadeAnimationInteractor shadeAnimationInteractor,
             DeviceEntryFaceAuthInteractor deviceEntryFaceAuthInteractor,
             SplitShadeStateController splitShadeStateController,
@@ -707,9 +688,7 @@ public final class NotificationPanelViewController implements
             BrightnessMirrorShowingRepository brightnessMirrorShowingRepository,
             BlurConfig blurConfig,
             Lazy<ShadeDisplaysRepository> shadeDisplaysRepository,
-            WindowRootViewBlurInteractor windowRootViewBlurInteractor,
-            TunerService tunerService,
-            Context context) {
+            WindowRootViewBlurInteractor windowRootViewBlurInteractor) {
         mBlurConfig = blurConfig;
         mWindowRootViewBlurInteractor = windowRootViewBlurInteractor;
         SceneContainerFlag.assertInLegacyMode();
@@ -795,7 +774,7 @@ public final class NotificationPanelViewController implements
         mNotificationStackScrollLayoutController = notificationStackScrollLayoutController;
         mKeyguardStatusBarViewComponentFactory = keyguardStatusBarViewComponentFactory;
         mDepthController = notificationShadeDepthController;
-        mContentResolver = contentResolver;
+        mEmergencyButtonControllerFactory = emergencyButtonControllerFactory;
         mFragmentService = fragmentService;
         mStatusBarService = statusBarService;
         mSplitShadeStateController = splitShadeStateController;
@@ -803,10 +782,8 @@ public final class NotificationPanelViewController implements
                 mSplitShadeStateController.shouldUseSplitNotificationShade(mResources);
         mView.setWillNotDraw(!DEBUG_DRAWABLE);
         mShadeHeaderController = shadeHeaderController;
-        mTunerService = tunerService;
         mAnimateBack = predictiveBackAnimateShade();
         mFalsingCollector = falsingCollector;
-        mPowerManager = powerManager;
         mWakeUpCoordinator = coordinator;
         mMainDispatcher = mainDispatcher;
         mAccessibilityManager = accessibilityManager;
@@ -832,16 +809,6 @@ public final class NotificationPanelViewController implements
         quickSettingsController.setFlingQsWithoutClickListener(this::onFlingQsWithoutClick);
         quickSettingsController.setExpansionHeightSetToMaxListener(this::onExpansionHeightSetToMax);
         shadeExpansionStateManager.addStateListener(this::onPanelStateChanged);
-        mDoubleTapGesture = new GestureDetector(context,
-                new GestureDetector.SimpleOnGestureListener() {
-            @Override
-            public boolean onDoubleTap(MotionEvent e) {
-                if (mPowerManager != null) {
-                    mPowerManager.goToSleep(e.getEventTime());
-                }
-                return true;
-            }
-        });
         mConversationNotificationManager = conversationNotificationManager;
         mScreenOffAnimationController = screenOffAnimationController;
         mUnlockedScreenOffAnimationController = unlockedScreenOffAnimationController;
@@ -903,10 +870,8 @@ public final class NotificationPanelViewController implements
                     }
                 });
         mAlternateBouncerInteractor = alternateBouncerInteractor;
-        mQsHeaderLayout = mView.requireViewById(R.id.layout_header);
-        mQsHeaderImageView = mView.requireViewById(R.id.qs_header_image_view);
-        mStatusBarHeaderMachine = new StatusBarHeaderMachine(context);
         dumpManager.registerDumpable(this);
+        mPerf = new BoostFramework();
     }
 
     private void unlockAnimationFinished() {
@@ -1485,7 +1450,7 @@ public final class NotificationPanelViewController implements
                             * FACTOR_OF_HIGH_VELOCITY_FOR_MAX_OVERSHOOT)));
             overshootAmount += mOverExpansion / mPanelFlingOvershootAmount;
         }
-        ValueAnimator animator = createHeightAnimator(target, overshootAmount);
+        ValueAnimator animator = createHeightAnimator(target, overshootAmount, vel);
         if (expand) {
             maybeVibrateOnOpening(true /* openingWithTouch */);
             if (expandBecauseOfFalsing && vel < 0) {
@@ -1529,6 +1494,11 @@ public final class NotificationPanelViewController implements
                 }
             });
         }
+        if (mPerf != null) {
+            String currentPackage = mView.getContext().getPackageName();
+            mPerf.perfHint(BoostFramework.VENDOR_HINT_SCROLL_BOOST, currentPackage, -1,
+                    BoostFramework.Scroll.PANEL_VIEW);
+        }
         animator.addListener(new AnimatorListenerAdapter() {
             private boolean mCancelled;
 
@@ -1541,11 +1511,17 @@ public final class NotificationPanelViewController implements
 
             @Override
             public void onAnimationCancel(Animator animation) {
+                if (mPerf != null) {
+                    mPerf.perfLockRelease();
+                }
                 mCancelled = true;
             }
 
             @Override
             public void onAnimationEnd(Animator animation) {
+                if (mPerf != null) {
+                    mPerf.perfLockRelease();
+                }
                 if (shouldSpringBack && !mCancelled) {
                     // After the shade is flung open to an overscrolled state, spring back
                     // the shade by reducing section padding to 0.
@@ -1972,16 +1948,6 @@ public final class NotificationPanelViewController implements
         updateHeader();
         updatePanelExpanded();
         updateGestureExclusionRect();
-
-        if (mQsController.isExpandImmediate() && !mQsController.getFullyExpanded()) {
-            mNotificationStackScrollLayoutController.getView().setAlpha(0f);
-        } else {
-            mNotificationStackScrollLayoutController.getView().setAlpha(1f);
-        }
-
-        if (mHeaderImageEnabled) {
-            mView.post(() -> updateHeaderImage());
-        }
         if (DEBUG_DRAWABLE) {
             mView.invalidate();
         }
@@ -2373,11 +2339,34 @@ public final class NotificationPanelViewController implements
         }
     }
 
+    /**
+     * Whether the status-bar brightness gesture should fire in the panel's
+     * current state. The gesture is gated on the main toggle and, when on the
+     * keyguard, additionally on the lockscreen sub-toggle.
+     */
+    private boolean isBrightnessGestureAllowedHere() {
+        final ContentResolver cr = mView.getContext().getContentResolver();
+        if (!StatusBarBrightnessGesture.isEnabled(cr)) {
+            return false;
+        }
+        if (mBarState == KEYGUARD
+                && !StatusBarBrightnessGesture.isLockscreenAllowed(cr)) {
+            return false;
+        }
+        return true;
+    }
+
     /** @deprecated Temporary a11y solution until dual shade launch b/371224114 */
     @Override
     @Deprecated
     public void onStatusBarLongPress(MotionEvent event) {
         Log.i(TAG, "Status Bar was long pressed.");
+        // The brightness gesture owns the long press when enabled; suppress
+        // shade expansion so the brightness handler can drive the adjustment.
+        if (StatusBarBrightnessGesture.isEnabled(mView.getContext().getContentResolver())) {
+            mShadeLog.d("Status bar brightness gesture enabled. Long press expansion ignored.");
+            return;
+        }
         if (mTouchDisabled) {
             mShadeLog.d("Touch disabled. Long press expansion ignored.");
             return;
@@ -3085,7 +3074,6 @@ public final class NotificationPanelViewController implements
         return !isDirectionUpwards(x, y);
     }
 
-    @Override
     public void fling(float vel, boolean expand, boolean expandBecauseOfFalsing) {
         fling(vel, expand, 1.0f /* collapseSpeedUpFactor */, expandBecauseOfFalsing);
     }
@@ -3105,27 +3093,22 @@ public final class NotificationPanelViewController implements
             return;
         }
         mIsSpringBackAnimation = true;
-        ValueAnimator animator = ValueAnimator.ofFloat(mOverExpansion, 0);
-        animator.addUpdateListener(
-                animation -> setOverExpansionInternal((float) animation.getAnimatedValue()));
-        animator.setDuration(SHADE_OPEN_SPRING_BACK_DURATION);
-        animator.setInterpolator(Interpolators.FAST_OUT_SLOW_IN);
-        animator.addListener(new AnimatorListenerAdapter() {
-            private boolean mCancelled;
-
-            @Override
-            public void onAnimationCancel(Animator animation) {
-                mCancelled = true;
-            }
-
-            @Override
-            public void onAnimationEnd(Animator animation) {
-                mIsSpringBackAnimation = false;
-                onFlingEnd(mCancelled);
-            }
+        // Real spring physics instead of a fixed-duration ValueAnimator: the settle now
+        // reacts to how far it has to travel instead of always taking
+        // SHADE_OPEN_SPRING_BACK_DURATION regardless of overexpansion amount.
+        if (mOverExpansionSpring != null) {
+            mOverExpansionSpring.cancel();
+        }
+        mOverExpansionSpring = new SpringAnimation(this, OVER_EXPANSION_SPRING_PROPERTY)
+                .setStartValue(mOverExpansion)
+                .setSpring(new SpringForce(0)
+                        .setStiffness(OVER_EXPANSION_SPRING_STIFFNESS)
+                        .setDampingRatio(OVER_EXPANSION_SPRING_DAMPING_RATIO));
+        mOverExpansionSpring.addEndListener((animation, cancelled, value, velocity) -> {
+            mIsSpringBackAnimation = false;
+            onFlingEnd(cancelled);
         });
-        setAnimator(animator);
-        animator.start();
+        mOverExpansionSpring.start();
     }
 
     @VisibleForTesting
@@ -3300,23 +3283,38 @@ public final class NotificationPanelViewController implements
      * @param overshootAmount the amount of overshoot desired
      */
     private ValueAnimator createHeightAnimator(float targetHeight, float overshootAmount) {
+        return createHeightAnimator(targetHeight, overshootAmount, 0f);
+    }
+
+    /**
+     * @param velocity the real fling velocity (px/s) from the touch that triggered this
+     *                 animation. Used to give the overshoot spring a natural starting speed
+     *                 instead of always starting from rest.
+     */
+    private ValueAnimator createHeightAnimator(float targetHeight, float overshootAmount,
+            float velocity) {
         float startExpansion = mOverExpansion;
         ValueAnimator animator = ValueAnimator.ofFloat(mExpandedHeight, targetHeight);
         registerAnimatorForTest(animator);
+        final boolean animateOverExpansion = overshootAmount > 0.0f
+                || (targetHeight == 0.0f && startExpansion != 0);
+        if (animateOverExpansion) {
+            // Real spring instead of a lerp-over-fixed-duration: this is what actually makes
+            // the overshoot/settle feel "alive" instead of robotic, and it carries the real
+            // finger-flick speed into how hard it overshoots.
+            if (mOverExpansionSpring != null) {
+                mOverExpansionSpring.cancel();
+            }
+            mOverExpansionSpring = new SpringAnimation(this, OVER_EXPANSION_SPRING_PROPERTY)
+                    .setStartValue(startExpansion)
+                    .setStartVelocity(velocity)
+                    .setSpring(new SpringForce(mPanelFlingOvershootAmount * overshootAmount)
+                            .setStiffness(OVER_EXPANSION_SPRING_STIFFNESS)
+                            .setDampingRatio(OVER_EXPANSION_SPRING_DAMPING_RATIO));
+            mOverExpansionSpring.start();
+        }
         animator.addUpdateListener(
-                animation -> {
-                    if (overshootAmount > 0.0f
-                            // Also remove the overExpansion when collapsing
-                            || (targetHeight == 0.0f && startExpansion != 0)) {
-                        final float expansion = MathUtils.lerp(
-                                startExpansion,
-                                mPanelFlingOvershootAmount * overshootAmount,
-                                Interpolators.FAST_OUT_SLOW_IN.getInterpolation(
-                                        animator.getAnimatedFraction()));
-                        setOverExpansionInternal(expansion);
-                    }
-                    setExpandedHeightInternal((float) animation.getAnimatedValue());
-                });
+                animation -> setExpandedHeightInternal((float) animation.getAnimatedValue()));
         return animator;
     }
 
@@ -3588,10 +3586,6 @@ public final class NotificationPanelViewController implements
         @Override
         public void onConfigChanged(Configuration newConfig) {
             updateResources();
-            if (mHeaderImageEnabled) {
-                mOrientation = newConfig.orientation;
-                mView.post(() -> updateHeaderImage());
-            }
         }
 
         @Override
@@ -3726,8 +3720,7 @@ public final class NotificationPanelViewController implements
         positionClockAndNotifications(true /* forceUpdate */);
     }
 
-    private final class ShadeAttachStateChangeListener implements View.OnAttachStateChangeListener,
-            TunerService.Tunable, StatusBarHeaderMachine.IStatusBarHeaderMachineObserver {
+    private final class ShadeAttachStateChangeListener implements View.OnAttachStateChangeListener {
         @Override
         public void onViewAttachedToWindow(View v) {
             mFragmentService.getFragmentHostManager(mView)
@@ -3738,18 +3731,6 @@ public final class NotificationPanelViewController implements
                 mStatusBarStateListener.onStateChanged(mStatusBarStateController.getState(), true);
             }
             mConfigurationController.addCallback(mConfigurationListener);
-
-            mStatusBarHeaderMachine.addObserver(this);
-            mStatusBarHeaderMachine.updateEnablement();
-
-            mTunerService.addTunable(this, DOUBLE_TAP_SLEEP_GESTURE);
-            mTunerService.addTunable(this, DOUBLE_TAP_SLEEP_LOCKSCREEN);
-            mTunerService.addTunable(this, STATUS_BAR_BRIGHTNESS_CONTROL);
-            mTunerService.addTunable(this, STATUS_BAR_BRIGHTNESS_CONTROL_LOCKSCREEN);
-            mTunerService.addTunable(this, STATUS_BAR_CUSTOM_HEADER);
-            mTunerService.addTunable(this, STATUS_BAR_CUSTOM_HEADER_HEIGHT);
-            mTunerService.addTunable(this, STATUS_BAR_CUSTOM_HEADER_SHADOW);
-
             // Theme might have changed between inflating this view and attaching it to the
             // window, so
             // force a call to onThemeChanged
@@ -3764,80 +3745,7 @@ public final class NotificationPanelViewController implements
                     .removeTagListener(QS.TAG, mQsController.getQsFragmentListener());
             mStatusBarStateController.removeCallback(mStatusBarStateListener);
             mConfigurationController.removeCallback(mConfigurationListener);
-            mStatusBarHeaderMachine.removeObserver(this);
-            mTunerService.removeTunable(this);
             mFalsingManager.removeTapListener(mFalsingTapListener);
-        }
-
-        @Override
-        public void onTuningChanged(String key, String newValue) {
-            switch (key) {
-                case DOUBLE_TAP_SLEEP_GESTURE:
-                    mDoubleTapToSleepEnabled =
-                            TunerService.parseIntegerSwitch(newValue,
-                                mResources.getBoolean(org.lineageos.platform.internal.R.bool.
-                                config_dt2sGestureEnabledByDefault));
-                    break;
-                case DOUBLE_TAP_SLEEP_LOCKSCREEN:
-                    mIsLockscreenDoubleTapEnabled =
-                            TunerService.parseIntegerSwitch(newValue,
-                                mResources.getBoolean(org.lineageos.platform.internal.R.bool.
-                                config_dt2sGestureEnabledByDefault));
-                    break;
-                case STATUS_BAR_BRIGHTNESS_CONTROL:
-                    mBrightnessControl =
-                            TunerService.parseIntegerSwitch(newValue, false);
-                    break;
-                case STATUS_BAR_BRIGHTNESS_CONTROL_LOCKSCREEN:
-                    mBrightnessControlLockscreen =
-                            TunerService.parseIntegerSwitch(newValue, false);
-                    break;
-                case STATUS_BAR_CUSTOM_HEADER:
-                    mHeaderImageEnabled =
-                            TunerService.parseIntegerSwitch(newValue, false);
-                    if (!mHeaderImageEnabled) {
-                        mQsHeaderLayout.setVisibility(View.GONE);
-                    } else {
-                        mOrientation = mView.getResources().getConfiguration().orientation;
-                        mView.post(() -> updateHeaderImage());
-                    }
-                    break;
-                case STATUS_BAR_CUSTOM_HEADER_HEIGHT:
-                    mHeaderImageHeight =
-                            TunerService.parseInteger(newValue, 142);
-                    mBottomFadeHeight = (int) Math.round(mHeaderImageHeight * 0.555);
-                    if (mHeaderImageEnabled) {
-                        mView.post(() -> updateHeaderImage());
-                    }
-                    break;
-                case STATUS_BAR_CUSTOM_HEADER_SHADOW:
-                    mHeaderImageShadow =
-                            TunerService.parseInteger(newValue, 0);
-                    if (mHeaderImageEnabled) {
-                        mView.post(() -> updateHeaderImage());
-                    }
-                    break;
-                default:
-                    break;
-            }
-        }
-
-        @Override
-        public void updateHeader(Drawable headerImage, boolean force) {
-            mView.post(() -> doUpdateStatusBarCustomHeader(headerImage, force));
-        }
-
-        @Override
-        public void disableHeader() {
-            mView.post(() -> {
-                mCurrentBackground = null;
-                mQsHeaderImageView.setVisibility(View.GONE);
-            });
-        }
-
-        @Override
-        public void refreshHeader() {
-            mView.post(() -> doUpdateStatusBarCustomHeader(mCurrentBackground, true));
         }
     }
 
@@ -3860,9 +3768,6 @@ public final class NotificationPanelViewController implements
             mQsController.handleShadeLayoutChanged(oldMaxHeight);
             updateExpandedHeight(getExpandedHeight());
             updateHeader();
-            if (mHeaderImageEnabled) {
-                mView.post(() -> updateHeaderImage());
-            }
 
             // If we are running a size change animation, the animation takes care of the height
             // of the container. However, if we are not animating, we always need to make the QS
@@ -4170,21 +4075,10 @@ public final class NotificationPanelViewController implements
                 return false;
             }
 
-            if ((mIsLockscreenDoubleTapEnabled && !mPulsing && !mDozing
-                    && mBarState == StatusBarState.KEYGUARD) ||
-                    (!mQsController.getExpanded() && mDoubleTapToSleepEnabled
-                    && event.getY() < mStatusBarHeaderHeightKeyguard)) {
-                mDoubleTapGesture.onTouchEvent(event);
-            }
-
             // Make sure the next touch won't the blocked after the current ends.
             if (event.getAction() == MotionEvent.ACTION_UP
                     || event.getAction() == MotionEvent.ACTION_CANCEL) {
                 mBlockingExpansionForCurrentTouch = false;
-                if (mBrightnessControl) {
-                    mCentralSurfaces.onBrightnessChanged(true);
-                    mCentralSurfaces.cancelBrightnessControl();
-                }
             }
             // When touch focus transfer happens, ACTION_DOWN->ACTION_UP may happen immediately
             // without any ACTION_MOVE event.
@@ -4222,29 +4116,29 @@ public final class NotificationPanelViewController implements
                 mShadeLog.d("Touch has same down time as Status Bar long press. Ignoring.");
                 return false;
             }
+
+            // Route status-bar-area touches to the brightness gesture when the
+            // user has enabled it. On the keyguard the system status-bar window
+            // does not own input — touches flow through this panel — so without
+            // this hookup the gesture only works when unlocked. Consuming the
+            // event also prevents an unintentional downward drift from being
+            // re-interpreted as a notification-shade pull.
+            if (event.getY(event.getActionIndex()) < mStatusBarMinHeight
+                    && isBrightnessGestureAllowedHere()) {
+                mCentralSurfaces.brightnessControl(event);
+                int action = event.getActionMasked();
+                if (action == MotionEvent.ACTION_UP
+                        || action == MotionEvent.ACTION_CANCEL) {
+                    mCentralSurfaces.onBrightnessChanged(true);
+                }
+                return true;
+            }
             if (!mHeadsUpTouchHelper.isTrackingHeadsUp() && mQsController.handleTouch(
                     event, isFullyCollapsed(), isShadeOrQsHeightAnimationRunning())) {
-                if (mBrightnessControl) {
-                    mCentralSurfaces.cancelBrightnessControl();
-                }
                 if (event.getActionMasked() != MotionEvent.ACTION_MOVE) {
                     mShadeLog.logMotionEvent(event, "onTouch: handleQsTouch handled event");
                 }
                 return true;
-            }
-            if (mBrightnessControl) {
-                final int actionIndex = event.getActionIndex();
-                final float swipeY = event.getY(actionIndex);
-                if (swipeY < mStatusBarMinHeight &&
-                        (mBarState != KEYGUARD || mBrightnessControlLockscreen)) {
-                    mCentralSurfaces.brightnessControl(event);
-                    final int action = event.getActionMasked();
-                    if (action == MotionEvent.ACTION_UP
-                            || action == MotionEvent.ACTION_CANCEL) {
-                        mCentralSurfaces.onBrightnessChanged(true);
-                    }
-                    return true;
-                }
             }
             if (event.getActionMasked() == MotionEvent.ACTION_DOWN && isFullyCollapsed()) {
                 mMetricsLogger.count(COUNTER_PANEL_OPEN, 1);
@@ -4506,105 +4400,6 @@ public final class NotificationPanelViewController implements
                 return true;
             }
             return super.performAccessibilityAction(host, action, args);
-        }
-    }
-
-    private void doUpdateStatusBarCustomHeader(Drawable drawable, boolean force) {
-        if (drawable != null) {
-            mQsHeaderImageView.setVisibility(View.VISIBLE);
-            mCurrentBackground = drawable;
-            setNotificationPanelHeaderBackground(drawable, force);
-        } else {
-            mCurrentBackground = null;
-            mQsHeaderImageView.setVisibility(View.GONE);
-        }
-        if (mHeaderImageEnabled) {
-            updateHeaderImage();
-        }
-    }
-
-    private void updateHeaderImage() {
-        float shadeHeaderExpansion = mShadeHeaderController.getShadeExpandedFraction();
-        if (shadeHeaderExpansion > 0f &&
-            mOrientation != Configuration.ORIENTATION_LANDSCAPE &&
-            mCurrentBackground != null && mQsHeaderImageView.getDrawable() != null) {
-
-            if (mQsHeaderLayout.getVisibility() != View.VISIBLE) {
-                int headerImageHeight = (int) TypedValue.applyDimension(
-                        TypedValue.COMPLEX_UNIT_DIP,
-                        mHeaderImageHeight,
-                        mView.getResources().getDisplayMetrics());
-
-                ViewGroup.LayoutParams params = mQsHeaderLayout.getLayoutParams();
-                params.height = headerImageHeight;
-                mQsHeaderLayout.setLayoutParams(params);
-
-                mQsHeaderLayout.setFadeSizes(0, 0,
-                        (int) TypedValue.applyDimension(
-                                TypedValue.COMPLEX_UNIT_DIP,
-                                mBottomFadeHeight,
-                                mView.getResources().getDisplayMetrics()),
-                        0);
-
-                mQsHeaderLayout.setVisibility(View.VISIBLE);
-            }
-            if (mShadeHeaderExpansion != shadeHeaderExpansion) {
-                mShadeHeaderExpansion = shadeHeaderExpansion;
-                mQsHeaderImageView.setImageAlpha( (int)
-                    (mShadeHeaderExpansion * (255 - mHeaderImageShadow)));
-            }
-
-            startHeaderAnimIfPossible();
-        } else {
-            mQsHeaderLayout.setVisibility(View.GONE);
-            stopHeaderAnimIfRunning();
-        }
-    }
-
-    private void stopHeaderAnimIfRunning() {
-        Drawable drawable = mQsHeaderImageView.getDrawable();
-        if (drawable instanceof Animatable anim && anim.isRunning()) {
-            anim.stop();
-        }
-        if (drawable != null) {
-            drawable.setVisible(false, false);
-        }
-    }
-
-    private void startHeaderAnimIfPossible() {
-        Drawable drawable = mQsHeaderImageView.getDrawable();
-        if (drawable == null) return;
-
-        // Only animate when we are actually showing it
-        if (mQsHeaderLayout.getVisibility() != View.VISIBLE || mQsHeaderImageView.getVisibility() != View.VISIBLE) {
-            return;
-        }
-
-        drawable.setVisible(true, true);
-        if (drawable instanceof Animatable anim && !anim.isRunning()) {
-            anim.start();
-        }
-    }
-
-    private void setNotificationPanelHeaderBackground(Drawable dw, boolean force) {
-        // Stop previous anim, if any, before swapping
-        stopHeaderAnimIfRunning();
-
-        // Avoid TransitionDrawable if new is animatable, but do not start here
-        if (dw instanceof Animatable) {
-            mQsHeaderImageView.setImageDrawable(dw);
-            return;
-        }
-
-        Drawable current = mQsHeaderImageView.getDrawable();
-        if (current != null && !force && !(current instanceof Animatable)) {
-            Drawable[] layers = new Drawable[]{current, dw};
-            TransitionDrawable transitionDrawable = new TransitionDrawable(layers);
-            transitionDrawable.setCrossFadeEnabled(true);
-            mQsHeaderImageView.setImageDrawable(transitionDrawable);
-            transitionDrawable.startTransition(1000);
-        } else {
-            mQsHeaderImageView.setImageDrawable(dw);
         }
     }
 }

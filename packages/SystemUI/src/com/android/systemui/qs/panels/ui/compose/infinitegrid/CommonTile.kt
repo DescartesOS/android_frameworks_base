@@ -117,6 +117,7 @@ import com.android.systemui.qs.panels.ui.compose.infinitegrid.CommonTileDefaults
 import com.android.systemui.qs.panels.ui.compose.infinitegrid.CommonTileDefaults.TileLabelBlurWidth
 import com.android.systemui.qs.panels.ui.compose.infinitegrid.CommonTileDefaults.longPressLabelSettings
 import com.android.systemui.qs.panels.ui.viewmodel.AccessibilityUiState
+import com.android.systemui.qs.shared.style.isStockQsStyle
 import com.android.systemui.qs.ui.compose.borderOnFocus
 import com.android.systemui.res.R
 import kotlin.math.abs
@@ -264,10 +265,15 @@ fun LargeTileContent(
         // Icon
         val longPressLabel = longPressLabelSettings().takeIf { onLongClick != null }
         val focusBorderColor = MaterialTheme.colorScheme.secondary
+        val stockStyle = isStockQsStyle
+        val animatedIconBackgroundColor by
+            animateColorAsState(colors.iconBackground, label = "QSTileDualTargetBackgroundColor")
         Box(
             modifier =
-                Modifier.padding(8.dp).drawBehind {
-                    drawCircle(colors.circleAroundIcon)
+                Modifier.thenIf(!stockStyle) {
+                    Modifier.padding(8.dp).drawBehind {
+                        drawCircle(colors.circleAroundIcon)
+                    }
                 },
             contentAlignment = Alignment.Center,
         ) {
@@ -275,6 +281,9 @@ fun LargeTileContent(
                 modifier =
                     Modifier.size(CommonTileDefaults.ToggleTargetSize)
                         .clip(iconShape)
+                        .thenIf(stockStyle && isDualTarget) {
+                            Modifier.drawBehind { drawRect(animatedIconBackgroundColor) }
+                        }
                         .verticalSquish(squishiness)
                         .thenIf(isDualTarget) {
                             Modifier.borderOnFocus(color = focusBorderColor, iconShape.topEnd)
@@ -308,7 +317,9 @@ fun LargeTileContent(
             }
         }
 
-        Spacer(modifier = Modifier.width(0.5.dp).height(CommonTileDefaults.TileDividerHeight))
+        if (!stockStyle) {
+            Spacer(modifier = Modifier.width(0.5.dp).height(CommonTileDefaults.TileDividerHeight))
+        }
 
         // Labels
         LargeTileLabels(
@@ -512,7 +523,12 @@ fun Modifier.tileTestTag(iconOnly: Boolean): Modifier {
 @Composable
 fun Modifier.largeTilePadding(isDualTarget: Boolean = false): Modifier {
     return padding(
-        start = CommonTileDefaults.StartPadding,
+        start =
+            if (isStockQsStyle) {
+                CommonTileDefaults.StartPadding
+            } else {
+                CommonTileDefaults.PenguinStartPadding
+            },
         end = if (isDualTarget) CommonTileDefaults.DualTargetEndPadding else TileEndPadding,
     )
 }
@@ -609,6 +625,11 @@ object CommonTileDefaults {
         @Composable
         @ReadOnlyComposable
         get() = dimensionResource(id = R.dimen.common_tile_default_start_padding)
+
+    val PenguinStartPadding: Dp
+        @Composable
+        @ReadOnlyComposable
+        get() = dimensionResource(id = R.dimen.custom_qs_tile_start_padding)
 
     val TileHeight: Dp
         @Composable

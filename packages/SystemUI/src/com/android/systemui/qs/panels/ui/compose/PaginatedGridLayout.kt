@@ -16,7 +16,6 @@
 
 package com.android.systemui.qs.panels.ui.compose
 
-import android.provider.Settings
 import androidx.compose.foundation.layout.Arrangement.spacedBy
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
@@ -32,6 +31,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
@@ -45,10 +45,11 @@ import com.android.compose.animation.scene.ContentScope
 import com.android.compose.modifiers.padding
 import com.android.systemui.common.ui.compose.PagerDots
 import com.android.systemui.compose.modifiers.sysuiResTag
+import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.compositionLocalOf
 import com.android.systemui.development.ui.compose.BuildNumber
 import com.android.systemui.development.ui.viewmodel.BuildNumberViewModel
 import com.android.systemui.lifecycle.rememberViewModel
-import com.android.systemui.qs.footer.ui.compose.rememberSystemSettingEnabled
 import com.android.systemui.qs.panels.dagger.PaginatedBaseLayoutType
 import com.android.systemui.qs.panels.ui.compose.Dimensions.FooterHeight
 import com.android.systemui.qs.panels.ui.compose.Dimensions.InterPageSpacing
@@ -58,6 +59,8 @@ import com.android.systemui.qs.panels.ui.viewmodel.TileViewModel
 import com.android.systemui.qs.panels.ui.viewmodel.toolbar.EditModeButtonViewModel
 import com.android.systemui.res.R
 import javax.inject.Inject
+
+val LocalIsPaginatedGrid = compositionLocalOf { false }
 
 class PaginatedGridLayout
 @Inject
@@ -69,6 +72,8 @@ constructor(
     override fun ContentScope.TileGrid(
         tiles: List<TileViewModel>,
         modifier: Modifier,
+        columnsOverride: Int?,
+        forceLargeTiles: Boolean,
         listening: () -> Boolean,
         enableRevealEffect: Boolean,
     ) {
@@ -94,7 +99,7 @@ constructor(
                 delegateGridLayout.viewModelFactory.create()
             }
 
-        val rows = viewModel.rows
+        val rows = integerResource(R.integer.quick_settings_paginated_grid_num_rows)
         val pages =
             remember(tiles, rows, *delegateGridViewModel.pageKeys) {
                 delegateGridViewModel.splitIntoPages(tiles, rows)
@@ -102,14 +107,15 @@ constructor(
 
         val pagerState = rememberPagerState(0) { pages.size }
 
-        LaunchedEffect(listening, pagerState) {
-            snapshotFlow { listening() }
-                .collect {
+        val currentListening by rememberUpdatedState(listening)
+        LaunchedEffect(pagerState) {
+            snapshotFlow { currentListening() }
+                .collect { isListening ->
                     // Whenever we go from not listening to listening, we should be in the first
                     // page. If we did this when going from listening to not listening, opening
                     // edit mode in second page will cause it to go to first page during the
                     // transition.
-                    if (listening()) {
+                    if (isListening) {
                         pagerState.scrollToPage(0)
                     }
                 }
@@ -155,22 +161,28 @@ constructor(
             ) {
                 val page = pages[it]
 
-                with(delegateGridLayout) {
-                    TileGrid(
-                        tiles = page,
-                        modifier = Modifier,
-                        listening = listening,
-                        enableRevealEffect = false,
-                    )
+                CompositionLocalProvider(LocalIsPaginatedGrid provides true) {
+                    with(delegateGridLayout) {
+                        TileGrid(
+                            tiles = page,
+                            modifier = Modifier,
+                            columnsOverride = columnsOverride,
+                            forceLargeTiles = forceLargeTiles,
+                            listening = listening,
+                            enableRevealEffect = false,
+                        )
+                    }
                 }
             }
-            FooterBar(
-                buildNumberViewModelFactory = viewModel.buildNumberViewModelFactory,
-                pagerState = pagerState,
-                showArrowsInPager = viewModel.showArrowsInPagerDots,
-                editButtonViewModelFactory = viewModel.editModeButtonViewModelFactory,
-                isVisible = { listening() && layoutState.isIdle() },
-            )
+            if (columnsOverride == null && !forceLargeTiles) {
+                FooterBar(
+                    buildNumberViewModelFactory = viewModel.buildNumberViewModelFactory,
+                    pagerState = pagerState,
+                    showArrowsInPager = viewModel.showArrowsInPagerDots,
+                    editButtonViewModelFactory = viewModel.editModeButtonViewModelFactory,
+                    isVisible = { listening() && layoutState.isIdle() },
+                )
+            }
         }
     }
 }
@@ -188,8 +200,6 @@ private fun FooterBar(
     editButtonViewModelFactory: EditModeButtonViewModel.Factory,
     isVisible: () -> Boolean = { true },
 ) {
-    val showEdit by rememberSystemSettingEnabled(Settings.System.QS_FOOTER_SHOW_EDIT)
-
     val editButtonViewModel =
         rememberViewModel(traceName = "PaginatedGridLayout-editButtonViewModel") {
             editButtonViewModelFactory.create()
@@ -222,9 +232,7 @@ private fun FooterBar(
         )
         Row(Modifier.weight(1f)) {
             Spacer(modifier = Modifier.weight(1f))
-            if (showEdit) {
-                EditModeButton(viewModel = editButtonViewModel, isVisible = isVisible())
-            }
+            EditModeButton(viewModel = editButtonViewModel, isVisible = isVisible())
         }
     }
 }
