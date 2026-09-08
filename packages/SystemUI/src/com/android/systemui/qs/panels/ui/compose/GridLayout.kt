@@ -40,6 +40,7 @@ interface GridLayout {
         modifier: Modifier,
         listening: () -> Boolean,
         enableRevealEffect: Boolean,
+        belowTiles: @Composable () -> Unit = {},
     )
 
     @Composable

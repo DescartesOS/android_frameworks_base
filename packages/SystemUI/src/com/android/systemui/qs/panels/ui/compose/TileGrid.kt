@@ -34,6 +34,7 @@ fun ContentScope.TileGrid(
     excludeSpecs: List<TileSpec> = emptyList(),
     listening: () -> Boolean = { true },
     enableRevealEffect: Boolean = false,
+    belowTiles: @Composable () -> Unit = {},
 ) {
     val gridLayout = viewModel.gridLayout
     val tiles = viewModel.tileViewModels.filter { it.spec !in excludeSpecs }
@@ -43,6 +44,7 @@ fun ContentScope.TileGrid(
             modifier = modifier,
             listening = listening,
             enableRevealEffect = enableRevealEffect,
+            belowTiles = belowTiles,
         )
     }
 }
