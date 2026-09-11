@@ -171,6 +171,7 @@ import com.android.systemui.qs.panels.shared.model.SizedTileImpl
 import com.android.systemui.qs.panels.ui.compose.DragAndDropState
 import com.android.systemui.qs.panels.ui.compose.DragType
 import com.android.systemui.qs.panels.ui.compose.EditTileListState
+import com.android.systemui.qs.panels.ui.compose.LocalPanelElementHeight
 import com.android.systemui.qs.panels.ui.compose.LocalPanelElementPreview
 import com.android.systemui.qs.panels.ui.compose.LocalQsHeaderPreview
 import com.android.systemui.qs.panels.ui.compose.PANEL_ELEMENT_SPECS
@@ -178,7 +179,6 @@ import com.android.systemui.qs.panels.ui.compose.EditTileListState.Companion.INV
 import com.android.systemui.qs.panels.ui.compose.dragAndDropRemoveZone
 import com.android.systemui.qs.panels.ui.compose.dragAndDropTileList
 import com.android.systemui.qs.panels.ui.compose.dragAndDropTileSource
-import com.android.systemui.qs.panels.ui.compose.infinitegrid.CommonTileDefaults.ActiveTileCornerRadius
 import com.android.systemui.qs.panels.ui.compose.infinitegrid.CommonTileDefaults.InactiveTileCornerRadius
 import com.android.systemui.qs.panels.ui.compose.infinitegrid.CommonTileDefaults.TileArrangementPadding
 import com.android.systemui.qs.panels.ui.compose.infinitegrid.CommonTileDefaults.TileHeight
@@ -192,8 +192,6 @@ import com.android.systemui.qs.panels.ui.compose.infinitegrid.EditModeTileDefaul
 import com.android.systemui.qs.panels.ui.compose.infinitegrid.EditModeTileDefaults.CurrentTilesGridPadding
 import com.android.systemui.qs.panels.ui.compose.infinitegrid.EditModeTileDefaults.GridBackgroundCornerRadius
 import com.android.systemui.qs.panels.ui.compose.infinitegrid.EditModeTileDefaults.TilePlacementSpec
-import com.android.systemui.qs.panels.ui.compose.infinitegrid.rememberTileShapeMode
-import com.android.systemui.qs.panels.ui.compose.infinitegrid.rememberQSPanelStyle
 import com.android.systemui.qs.panels.ui.compose.selection.InteractiveTileContainer
 import com.android.systemui.qs.panels.ui.compose.selection.MutableSelectionState
 import com.android.systemui.qs.panels.ui.compose.selection.QSDragAnchorsData
@@ -618,12 +616,21 @@ private fun CurrentTilesGrid(
 ) {
     val currentListState by rememberUpdatedState(listState)
     val totalRows = listState.tiles.lastOrNull()?.row ?: 0
-    val panelRows =
+    val panelHeights = LocalPanelElementHeight.current
+    val defaultPanelHeight = tileHeight() * 2 + TileArrangementPadding
+    val panelRowsExtra =
         listState.tiles
             .filterIsInstance<TileGridCell>()
             .filter { it.tile.tileSpec in PANEL_ELEMENT_SPECS }
-            .map { it.row }
-            .toSet()
+            .groupBy { it.row }
+            .values
+            .fold(0.dp) { acc, cells ->
+                val tallest =
+                    cells.maxOf {
+                        (panelHeights[it.tile.tileSpec] ?: defaultPanelHeight).value
+                    }
+                acc + (tallest.dp - tileHeight()).coerceAtLeast(0.dp)
+            }
     val totalHeight by
         animateDpAsState(
             gridHeight(
@@ -631,7 +638,7 @@ private fun CurrentTilesGrid(
                 tileHeight(),
                 TileArrangementPadding,
                 CurrentTilesGridPadding,
-            ) + (tileHeight() + TileArrangementPadding) * panelRows.size,
+            ) + panelRowsExtra,
             label = "QSEditCurrentTilesGridHeight",
         )
     val gridState = rememberLazyGridState()
@@ -682,7 +689,9 @@ private fun CurrentTilesGrid(
                     with(resizingOperation) {
                         // Commit the new size of the tile IF the size changed. Do this check before
                         // a snapshot is taken to avoid saving an unnecessary snapshot
-                        val isIcon = spec !in listState.largeTilesSpecs
+                        val isIcon =
+                            if (spec in PANEL_ELEMENT_SPECS) spec !in listState.fullWidthSpecs
+                            else spec !in listState.largeTilesSpecs
                         if (isIcon != toIcon) {
                             onEditAction(EditAction.ResizeTile(spec, toIcon))
                         }
@@ -951,17 +960,10 @@ private fun LazyGridItemScope.TileGridCell(
 ) {
     val stateDescription = stringResource(id = R.string.accessibility_qs_edit_position, index + 1)
     val tileState by rememberTileState(cell.tile, selectionState)
-    val resizingState = rememberResizingState(cell.tile.tileSpec, cell.isIcon)
-    val panelStyle = rememberQSPanelStyle()
-    val progress: () -> Float = {
-        if (panelStyle) {
-            0f
-        } else if (tileState == TileState.Selected) {
-            resizingState.progress()
-        } else {
-            if (cell.isIcon) 0f else 1f
-        }
-    }
+    val isPanelElement = cell.tile.tileSpec in PANEL_ELEMENT_SPECS
+    val smallSpan = if (isPanelElement) largeTilesSpan else 1
+    val isSmall = cell.width <= smallSpan
+    val resizingState = rememberResizingState(cell.tile.tileSpec, isSmall)
 
     if (tileState == TileState.Selected) {
         // If the tile is selected, listen to new target values from the draggable anchor to toggle
@@ -999,7 +1001,7 @@ private fun LazyGridItemScope.TileGridCell(
             .map { layoutInfo ->
                 layoutInfo.visibleItemsInfo
                     .find { it.key == cell.key }
-                    ?.let { QSDragAnchorsData(it.span == 1, it.size.width) }
+                    ?.let { QSDragAnchorsData(it.span <= smallSpan, it.size.width) }
             }
             .filterNotNull()
             .distinctUntilChanged()
@@ -1030,9 +1032,13 @@ private fun LazyGridItemScope.TileGridCell(
         selectionState.unSelect()
         onRemoveTile(cell.tile.tileSpec)
     }
-    val isPanelElement = cell.tile.tileSpec in PANEL_ELEMENT_SPECS
     val cellHeight =
-        if (isPanelElement) TileHeight * 2 + TileArrangementPadding else TileHeight
+        if (isPanelElement) {
+            LocalPanelElementHeight.current[cell.tile.tileSpec]
+                ?: (TileHeight * 2 + TileArrangementPadding)
+        } else {
+            TileHeight
+        }
     InteractiveTileContainer(
         tileState = tileState,
         resizingState = resizingState,
@@ -1050,7 +1056,6 @@ private fun LazyGridItemScope.TileGridCell(
             }
         },
         contentDescription = decorationClickLabel,
-        iconOnly = cell.isIcon,
     ) {
         // Rapidly composing elements with the draggable modifier can cause visual jank. This
         // usually happens when resizing a tile multiple times. We can fix this by applying the
@@ -1098,7 +1103,7 @@ private fun LazyGridItemScope.TileGridCell(
                             // Don't allow for resizing during placement mode
                             actions.add(
                                 CustomAccessibilityAction(toggleSizeLabel) {
-                                    onResize(FinalResizeOperation(cell.tile.tileSpec, !cell.isIcon))
+                                    onResize(FinalResizeOperation(cell.tile.tileSpec, !isSmall))
                                     true
                                 }
                             )
@@ -1122,14 +1127,13 @@ private fun LazyGridItemScope.TileGridCell(
                     cornerRadius = if (isPanelElement) 0.dp else InactiveTileCornerRadius,
                     alpha = { if (isPanelElement) 0f else containerAlpha },
                     color = { colors.background },
-                    iconOnly = cell.isIcon,
                 )
                 .keyboardShortcuts(cell.tile.tileSpec, selectionState) {
-                    onResize(FinalResizeOperation(cell.tile.tileSpec, !cell.isIcon))
+                    onResize(FinalResizeOperation(cell.tile.tileSpec, !isSmall))
                 }
                 .thenIf(isSelectable) { selectableModifier }
         ) {
-            EditTile(tile = cell.tile, state = resizingState, progress = progress)
+            EditTile(tile = cell.tile, state = resizingState, progress = resizingState::progress)
         }
     }
 }
@@ -1220,11 +1224,7 @@ private fun AvailableTileGridCell(
                         MaterialTheme.colorScheme.secondary,
                         CornerSize(InactiveTileCornerRadius),
                     )
-                    .tileBackground(
-                        cornerRadius = InactiveTileCornerRadius,
-                        color = { colors.background },
-                        iconOnly = true,
-                    )
+                    .tileBackground(cornerRadius = InactiveTileCornerRadius) { colors.background }
                     .clickable(
                         enabled = !cell.isCurrent,
                         onClick = onClick,
@@ -1375,19 +1375,9 @@ fun EditTile(
     ) {
         // Icon
         Box(
-            Modifier.size(ToggleTargetSize)
-                .let {
-                    if (tile.isDualTarget) {
-                        it.tileBackground(
-                            cornerRadius = InactiveTileCornerRadius,
-                            alpha = { progress() },
-                            color = { colors.iconBackground },
-                            iconOnly = true,
-                        )
-                    } else {
-                        it
-                    }
-                }
+            Modifier.size(ToggleTargetSize).thenIf(tile.isDualTarget) {
+                Modifier.drawBehind { drawCircle(colors.iconBackground, alpha = progress()) }
+            }
         ) {
             SmallTileContent(
                 iconProvider = { tile.icon },
@@ -1416,45 +1406,13 @@ private fun MeasureScope.iconHorizontalCenter(
     return (containerSize - toggleTargetSize.roundToPx()) / 2f - padding.toPx()
 }
 
-@Composable
-private fun editTileShape(cornerRadius: Dp): RoundedCornerShape {
-    val shapeMode = rememberTileShapeMode()
-    val radius = when (shapeMode) {
-        1 -> InactiveTileCornerRadius /* Circle-ish */
-        2 -> ActiveTileCornerRadius /* Rounded Square */
-        3 -> 0.dp /* Square */
-        4 -> InactiveTileCornerRadius /* Circle */
-        else -> cornerRadius
-    }
-    return RoundedCornerShape(radius)
-}
-
-@Composable
 private fun Modifier.tileBackground(
     cornerRadius: Dp,
     alpha: () -> Float = { 1f },
     color: () -> Color,
-    iconOnly: Boolean,
 ): Modifier {
-    val panelStyle = rememberQSPanelStyle()
-    val shapeMode = rememberTileShapeMode()
-    return if (panelStyle || (shapeMode == 4 && iconOnly)) {
-        // Draw a centered circle that fits the tile's min dimension
-        drawBehind {
-            val border = 0f
-            val diameter = minOf(size.width, size.height) - border
-            val radius = diameter / 2f
-            drawCircle(
-                color = color(),
-                alpha = alpha(),
-                radius = radius,
-                center = Offset(size.width / 2f, size.height / 2f)
-            )
-        }
-    } else {
-        // Clip tile contents from overflowing past the tile
-        clip(editTileShape(cornerRadius)).drawBehind { drawRect(color(), alpha = alpha()) }
-    }
+    // Clip tile contents from overflowing past the tile
+    return clip(RoundedCornerShape(cornerRadius)).drawBehind { drawRect(color(), alpha = alpha()) }
 }
 
 private fun Modifier.keyboardShortcuts(
@@ -1509,9 +1467,6 @@ private object EditModeTileDefaults {
             label = MaterialTheme.colorScheme.onSurface,
             secondaryLabel = MaterialTheme.colorScheme.onSurface,
             icon = MaterialTheme.colorScheme.onSurface,
-            outline = MaterialTheme.colorScheme.onSurface,
-            classicLabel = MaterialTheme.colorScheme.onSurface.copy(alpha = .9f),
-            classicSecondaryLabel = MaterialTheme.colorScheme.onSurface.copy(alpha = .8f),
         )
 }
 
