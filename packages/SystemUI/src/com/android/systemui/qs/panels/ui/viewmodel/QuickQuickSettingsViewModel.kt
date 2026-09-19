@@ -26,6 +26,7 @@ import com.android.systemui.media.remedia.ui.compose.MediaUiBehavior
 import com.android.systemui.media.remedia.ui.viewmodel.MediaCarouselVisibility
 import com.android.systemui.qs.panels.domain.interactor.QuickQuickSettingsRowInteractor
 import com.android.systemui.qs.panels.shared.model.SizedTileImpl
+import com.android.systemui.qs.panels.shared.model.autoArrangeTiles
 import com.android.systemui.qs.panels.shared.model.splitInRowsSequence
 import com.android.systemui.qs.pipeline.domain.interactor.CurrentTilesInteractor
 import com.android.systemui.qs.pipeline.domain.model.TileModel
@@ -43,7 +44,7 @@ constructor(
     quickQuickSettingsRowInteractor: QuickQuickSettingsRowInteractor,
     mediaInRowInLandscapeViewModelFactory: MediaInRowInLandscapeViewModel.Factory,
     val squishinessViewModel: TileSquishinessViewModel,
-    iconTilesViewModel: IconTilesViewModel,
+    val iconTilesViewModel: IconTilesViewModel,
     val tileHapticsViewModelFactory: TileHapticsViewModel.Factory,
 ) : HydratedActivatable() {
 
@@ -77,14 +78,21 @@ constructor(
     private var cachedCurrentTiles: List<TileModel> = emptyList()
     private var cachedTileVMs: Map<TileSpec, TileViewModel> = emptyMap()
 
-    val tileViewModels by derivedStateOf {
+    private fun sizedTiles(): List<SizedTileImpl<TileViewModel>> {
         val tiles = currentTiles
         if (tiles !== cachedCurrentTiles) {
             cachedCurrentTiles = tiles
             cachedTileVMs = tiles.associate { it.spec to TileViewModel(it.tile, it.spec, it.expandable) }
         }
-        tiles
-            .map { SizedTileImpl(cachedTileVMs[it.spec]!!, it.spec.width()) }
+        return tiles.map { SizedTileImpl(cachedTileVMs[it.spec]!!, it.spec.width()) }
+    }
+
+    /** Every current tile in order, for the Nothing style which places tiles on a 2D grid. */
+    val allTileViewModels by derivedStateOf { sizedTiles() }
+
+    val tileViewModels by derivedStateOf {
+        sizedTiles()
+            .let { autoArrangeTiles(it, columns, largeTilesSpan) }
             .let { splitInRowsSequence(it, columns).take(rows).toList().flatten() }
     }
 
