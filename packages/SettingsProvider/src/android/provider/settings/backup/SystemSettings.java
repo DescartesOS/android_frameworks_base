@@ -132,7 +132,12 @@ public class SystemSettings {
                 Settings.System.CV_PREFERRED_INTENSITY,
                 Settings.System.PEAK_REFRESH_RATE,
                 Settings.System.MIN_REFRESH_RATE,
-                Settings.System.ACCESSIBILITY_FORCE_INVERT_COLOR_OVERRIDE_PACKAGES_TO_DISABLE
+                Settings.System.ACCESSIBILITY_FORCE_INVERT_COLOR_OVERRIDE_PACKAGES_TO_DISABLE,
+                Settings.System.LOCKSCREEN_WATER_RIPPLE_ENABLED,
+                Settings.System.LOCKSCREEN_UNLOCK_ANIMATION,
+                Settings.System.LOCKSCREEN_UNLOCK_EFFECT_HFR,
+                Settings.System.LOCKSCREEN_WATER_RIPPLE_FULLSCREEN,
+                Settings.System.WIRELESS_CHARGING_RIPPLE_SHAPE
         ));
         return settings.toArray(new String[0]);
     }

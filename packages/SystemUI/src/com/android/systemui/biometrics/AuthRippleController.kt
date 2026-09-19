@@ -26,6 +26,7 @@ import android.provider.Settings
 import android.util.DisplayMetrics
 import androidx.annotation.VisibleForTesting
 import androidx.lifecycle.repeatOnLifecycle
+import com.android.lunaris.waterripple.WaterRippleView
 import com.android.keyguard.KeyguardUpdateMonitor
 import com.android.keyguard.KeyguardUpdateMonitorCallback
 import com.android.keyguard.logging.KeyguardLogger
@@ -92,6 +93,24 @@ constructor(
         get() = Settings.System.getIntForUser(context.contentResolver,
             Settings.System.ENABLE_RIPPLE_EFFECT, 1, UserHandle.USER_CURRENT) == 1
 
+    private val unlockAnimation: Int
+        get() {
+            val legacy = Settings.System.getIntForUser(context.contentResolver,
+                Settings.System.LOCKSCREEN_WATER_RIPPLE_ENABLED, 0, UserHandle.USER_CURRENT)
+            val selected = Settings.System.getIntForUser(context.contentResolver,
+                Settings.System.LOCKSCREEN_UNLOCK_ANIMATION, if (legacy == 1) 1 else 0,
+                UserHandle.USER_CURRENT)
+            return if (selected in 0..2) selected else 0
+        }
+
+    private val isUnlockEffectHfr: Boolean
+        get() = Settings.System.getIntForUser(context.contentResolver,
+            Settings.System.LOCKSCREEN_UNLOCK_EFFECT_HFR, 0, UserHandle.USER_CURRENT) == 1
+
+    private val isWaterRippleFullscreen: Boolean
+        get() = Settings.System.getIntForUser(context.contentResolver,
+            Settings.System.LOCKSCREEN_WATER_RIPPLE_FULLSCREEN, 0, UserHandle.USER_CURRENT) == 1
+
     override fun start() {
         init()
     }
@@ -125,6 +144,7 @@ constructor(
 
     @VisibleForTesting
     public override fun onViewDetached() {
+        mView.cancelUnlockedRipple()
         udfpsController?.removeCallback(udfpsControllerCallback)
         authController.removeCallback(authControllerCallback)
         keyguardUpdateMonitor.removeCallback(keyguardUpdateMonitorCallback)
@@ -158,7 +178,7 @@ constructor(
                         ),
                     )
                 logger.showingUnlockRippleAt(it.x, it.y, "FP sensor radius: $udfpsRadius")
-                showUnlockedRipple()
+                showUnlockedRipple(animation = unlockAnimation)
             }
         } else if (biometricSourceType == BiometricSourceType.FACE) {
             faceSensorLocation?.let {
@@ -179,15 +199,23 @@ constructor(
         }
     }
 
-    private fun showUnlockedRipple() {
+    private fun showUnlockedRipple(animation: Int = 0) {
         if (!isRippleEnabled) return
 
+        // Complete the previous owner before acquiring the shade for this animation.
+        mView.cancelUnlockedRipple()
         notificationShadeWindowController.setForcePluginOpen(true, this)
 
-        mView.startUnlockedRipple(
-            /* end runnable */
-            Runnable { notificationShadeWindowController.setForcePluginOpen(false, this) }
-        )
+        val onEnd = Runnable {
+            notificationShadeWindowController.setForcePluginOpen(false, this)
+        }
+        if (animation == WaterRippleView.EFFECT_WATER ||
+                animation == WaterRippleView.EFFECT_WATERCOLOR) {
+            mView.startWaterUnlockedRipple(onEnd, animation,
+                isUnlockEffectHfr, isWaterRippleFullscreen)
+        } else {
+            mView.startUnlockedRipple(onEnd)
+        }
     }
 
     fun updateSensorLocation() {
@@ -211,6 +239,10 @@ constructor(
 
     private val keyguardUpdateMonitorCallback =
         object : KeyguardUpdateMonitorCallback() {
+            override fun onUserSwitching(userId: Int) {
+                mView.cancelUnlockedRipple()
+            }
+
             override fun onBiometricAuthenticated(
                 userId: Int,
                 biometricSourceType: BiometricSourceType,

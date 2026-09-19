@@ -488,6 +488,7 @@ android_library {
     static_libs: [
         "//frameworks/libs/systemui:compilelib",
         "com.android.systemui.bundle.phone_api",
+        "lunaris_water_ripple",
         "SystemUI-res",
         "WifiTrackerLib",
         "WindowManager-Shell",
@@ -1104,6 +1105,9 @@ android_app {
     ],
     resource_dirs: [],
     enable_ksp: true,
+
+    jni_libs: ["liblunaris_water_ripple"],
+    use_embedded_native_libs: true,
 
     use_resource_processor: true,
     platform_apis: true,
