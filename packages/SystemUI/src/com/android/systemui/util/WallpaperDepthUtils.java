@@ -218,6 +218,14 @@ public class WallpaperDepthUtils {
         return instance;
     }
 
+    private static boolean sExpandedMediaArtVisible;
+
+    public static void setExpandedMediaArtVisible(boolean visible) {
+        if (sExpandedMediaArtVisible == visible) return;
+        sExpandedMediaArtVisible = visible;
+        if (instance != null) instance.updateDepthWallpaperVisibility();
+    }
+
     public void onUnlockStarted() {
         mUnlocking = true;
         hideDepthWallpaperImmediate();
@@ -466,7 +474,8 @@ public class WallpaperDepthUtils {
                 && !mUnlocking
                 && currentState == ScrimState.KEYGUARD
                 && !isLandscape()
-                && !MediaViewController.get(mContext).albumArtVisible();
+                && !MediaViewController.get(mContext).albumArtVisible()
+                && !sExpandedMediaArtVisible;
     }
 
     public void updateDepthWallpaperVisibility() {
