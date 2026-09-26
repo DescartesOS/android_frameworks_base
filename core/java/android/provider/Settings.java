@@ -7467,6 +7467,17 @@ public final class Settings {
         public static final String EDGE_LIGHT_CUSTOM_COLOR = "edge_light_custom_color";
 
         /**
+        /**
+         * @hide
+         */
+        public static final String LS_MEDIA_EXPAND = "ls_media_expand";
+
+        /**
+         * @hide
+         */
+        public static final String LS_MEDIA_EXPANDED = "ls_media_expanded";
+
+        /**
          * Pulse count for edge light
          * @hide
          */
