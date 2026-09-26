@@ -19,11 +19,13 @@ package com.android.systemui.keyguard.ui.composable.elements
 import android.content.Context
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.tween
+import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.RowScope
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.asPaddingValues
 import androidx.compose.foundation.layout.calculateStartPadding
@@ -34,11 +36,13 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeContent
 import androidx.compose.foundation.layout.width
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.Immutable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.res.dimensionResource
 import androidx.compose.ui.unit.Dp
@@ -53,6 +57,11 @@ import com.android.compose.animation.scene.TransitionBuilder
 import com.android.compose.windowsizeclass.LocalWindowSizeClass
 import com.android.systemui.dagger.SysUISingleton
 import com.android.systemui.keyguard.shared.model.ClockSize
+import com.android.systemui.keyguard.ui.composable.media.LockscreenExpandedClock
+import com.android.systemui.keyguard.ui.composable.media.LockscreenMediaExpansion
+import com.android.systemui.keyguard.ui.composable.media.LockscreenMediaWidgets
+import com.android.systemui.keyguard.ui.composable.media.collapsible
+import com.android.systemui.keyguard.ui.composable.media.within
 import com.android.systemui.keyguard.ui.viewmodel.LockscreenUpperRegionViewModel
 import com.android.systemui.keyguard.ui.viewmodel.LockscreenUpperRegionViewModel.Decision
 import com.android.systemui.lifecycle.rememberViewModel
@@ -246,10 +255,50 @@ constructor(
             ) {
                 scene(NarrowScenes.LargeClock) { LockscreenElement(Region.Clock.Large) }
                 scene(NarrowScenes.SmallClock) {
-                    Column {
-                        LockscreenElement(Region.Clock.Small)
+                    DisposableEffect(Unit) {
+                        LockscreenMediaExpansion.supported = true
+                        onDispose { LockscreenMediaExpansion.supported = false }
+                    }
+                    val expansion = LockscreenMediaExpansion.fraction
+                    val artWeight =
+                        if (viewModel.isNotificationStackActive) 0f else expansion
+                    val collapseOnTap =
+                        Modifier.pointerInput(Unit) {
+                            detectTapGestures { LockscreenMediaExpansion.collapse() }
+                        }
+                    Column(Modifier.fillMaxSize()) {
+                        Box(
+                            Modifier.collapsible {
+                                1f - LockscreenMediaExpansion.fraction.within(0f, 0.6f)
+                            }
+                        ) {
+                            LockscreenElement(Region.Clock.Small)
+                        }
+                        if (expansion > 0f) {
+                            LockscreenExpandedClock(
+                                Modifier.collapsible {
+                                        LockscreenMediaExpansion.fraction.within(0.3f, 1f)
+                                    }
+                                    .then(collapseOnTap)
+                                    .padding(top = 8.dp, bottom = 16.dp)
+                            )
+                        }
+                        if (artWeight > 0.001f) {
+                            Spacer(Modifier.weight(artWeight).fillMaxWidth().then(collapseOnTap))
+                        }
                         MediaCarousel(Modifier.align(Alignment.Start))
-                        Notifications(aodAlignment = Alignment.TopStart)
+                        if (expansion > 0f && !viewModel.isNotificationStackActive) {
+                            LockscreenMediaWidgets(
+                                Modifier.collapsible {
+                                        LockscreenMediaExpansion.fraction.within(0.4f, 1f)
+                                    }
+                                    .padding(bottom = 12.dp)
+                            )
+                        }
+                        Notifications(
+                            aodAlignment = Alignment.TopStart,
+                            modifier = Modifier.weight(maxOf(1f - artWeight, 0.001f)),
+                        )
                     }
                 }
             }
