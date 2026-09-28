@@ -7478,6 +7478,11 @@ public final class Settings {
         public static final String LS_MEDIA_EXPANDED = "ls_media_expanded";
 
         /**
+         * @hide
+         */
+        public static final String LS_MEDIA_MOTION_ART = "ls_media_motion_art";
+
+        /**
          * Pulse count for edge light
          * @hide
          */
