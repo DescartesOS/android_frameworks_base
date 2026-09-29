@@ -22,10 +22,14 @@ import android.graphics.Path
 import android.graphics.drawable.Animatable
 import android.graphics.drawable.AnimatedVectorDrawable
 import android.graphics.drawable.Drawable
+import android.os.SystemClock
 import android.text.TextUtils
 import android.util.PathParser
 import androidx.annotation.VisibleForTesting
 import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.core.AnimationSpec
+import androidx.compose.animation.core.snap
+import androidx.compose.animation.core.spring
 import androidx.compose.animation.graphics.res.animatedVectorResource
 import androidx.compose.animation.graphics.res.rememberAnimatedVectorPainter
 import androidx.compose.animation.graphics.vector.AnimatedImageVector
@@ -267,7 +271,11 @@ fun LargeTileContent(
         val focusBorderColor = MaterialTheme.colorScheme.secondary
         val stockStyle = isStockQsStyle
         val animatedIconBackgroundColor by
-            animateColorAsState(colors.iconBackground, label = "QSTileDualTargetBackgroundColor")
+            animateColorAsState(
+                colors.iconBackground,
+                tileColorSpec(),
+                label = "QSTileDualTargetBackgroundColor",
+            )
         Box(
             modifier =
                 Modifier.thenIf(!stockStyle) {
@@ -351,9 +359,14 @@ fun LargeTileLabels(
     isVisible: () -> Boolean = { true },
     accessibilityUiState: AccessibilityUiState? = null,
 ) {
-    val animatedLabelColor by animateColorAsState(colors.label, label = "QSTileLabelColor")
+    val animatedLabelColor by
+        animateColorAsState(colors.label, tileColorSpec(), label = "QSTileLabelColor")
     val animatedSecondaryLabelColor by
-        animateColorAsState(colors.secondaryLabel, label = "QSTileSecondaryLabelColor")
+        animateColorAsState(
+            colors.secondaryLabel,
+            tileColorSpec(),
+            label = "QSTileSecondaryLabelColor",
+        )
     Column(verticalArrangement = Arrangement.Center, modifier = modifier.fillMaxHeight()) {
         TileLabel(
             text = label,
@@ -393,7 +406,7 @@ fun SmallTileContent(
 ) {
     val context = LocalContext.current
     val icon = iconProvider(context)
-    val animatedColor by animateColorAsState(color, label = "QSTileIconColor")
+    val animatedColor by animateColorAsState(color, tileColorSpec(), label = "QSTileIconColor")
     val sizeValue = size()
     val iconModifier =
         modifier
@@ -716,3 +729,11 @@ private fun NonClippedImage(
         layout(constraints.minWidth, constraints.minHeight) {}
     }
 }
+
+@Composable
+internal fun tileColorSpec(): AnimationSpec<Color> {
+    val shownAt = remember { SystemClock.uptimeMillis() }
+    return if (SystemClock.uptimeMillis() - shownAt < TILE_SETTLE_MILLIS) snap() else spring()
+}
+
+private const val TILE_SETTLE_MILLIS = 500L
