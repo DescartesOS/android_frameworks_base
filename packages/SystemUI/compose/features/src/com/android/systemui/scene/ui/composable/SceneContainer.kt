@@ -59,9 +59,7 @@ import com.android.systemui.Flags.blackScreenOnSceneContainerStartFix
 import com.android.systemui.keyguard.ui.composable.modifier.burnInAware
 import com.android.systemui.lifecycle.rememberActivated
 import com.android.systemui.lifecycle.rememberViewModel
-import com.android.systemui.qs.composefragment.effectiveQsPanelStyle
-import com.android.systemui.qs.composefragment.secureIntSetting
-import com.android.systemui.qs.shared.style.QsPanelStyle
+import com.android.systemui.qs.shared.style.liquidGlassEnabled
 import com.android.systemui.ribbon.ui.composable.BottomRightCornerRibbon
 import com.android.systemui.scene.shared.model.Overlays
 import com.android.systemui.scene.shared.model.SceneDataSourceDelegator
@@ -108,6 +106,7 @@ fun SceneContainer(
         (transition: TransitionState.Transition, animationScope: CoroutineScope) -> Unit,
     onSnap: (idle: TransitionState.Idle) -> Unit,
     modifier: Modifier = Modifier,
+    onTransitionEnd: (transition: TransitionState.Transition) -> Unit = {},
     swipeVelocityThreshold: Dp = SceneContainerDefaults.SwipeVelocityThreshold,
 ) {
     WithSceneContainerPreloadedResources {
@@ -123,6 +122,7 @@ fun SceneContainer(
             onTransitionStart = onTransitionStart,
             onSnap = onSnap,
             modifier = modifier,
+            onTransitionEnd = onTransitionEnd,
             swipeVelocityThreshold = swipeVelocityThreshold,
         )
     }
@@ -142,6 +142,7 @@ private fun InternalSceneContainer(
         (transition: TransitionState.Transition, animationScope: CoroutineScope) -> Unit,
     onSnap: (idle: TransitionState.Idle) -> Unit,
     modifier: Modifier = Modifier,
+    onTransitionEnd: (transition: TransitionState.Transition) -> Unit = {},
     swipeVelocityThreshold: Dp = SceneContainerDefaults.SwipeVelocityThreshold,
 ) {
     val coroutineScope = rememberCoroutineScope()
@@ -159,15 +160,17 @@ private fun InternalSceneContainer(
         }
 
     val resources = LocalResources.current
-    val defaultQsStyle = effectiveQsPanelStyle() == QsPanelStyle.Default
+    val liquidGlass = liquidGlassEnabled()
+    val shadeMotionKey = transitionsBuilder.shadeMotion?.key()
     val sceneTransitions =
         remember(
+            shadeMotionKey,
             hapticFeedback,
             shadeExpansionMotion,
             animateQsTilesViewModel,
             resources,
             viewModel.toBouncerTransitionViewModel,
-            defaultQsStyle,
+            liquidGlass,
         ) {
             transitionsBuilder.build(
                 shadeExpansionMotion,
@@ -175,7 +178,7 @@ private fun InternalSceneContainer(
                 animateQsTilesViewModel,
                 viewModel.toBouncerTransitionViewModel,
                 resources,
-                defaultQsStyle,
+                liquidGlass,
             )
         }
 
@@ -204,6 +207,7 @@ private fun InternalSceneContainer(
                 sceneTransitionLatencyMonitor.onTransitionStart(transition)
             },
             onTransitionEnd = { transition ->
+                onTransitionEnd(transition)
                 sceneJankMonitor.onTransitionEnd(
                     from = transition.fromContent,
                     to = transition.toContent,
@@ -286,6 +290,7 @@ private fun InternalSceneContainer(
     // stretch. All scenes use the OffsetOverscrollEffect.
     val offsetOverscrollEffectFactory = rememberOffsetOverscrollEffectFactory()
     val stretchOverscrollEffectFactory = checkNotNull(LocalOverscrollFactory.current)
+    val quickSettingsShadeOverscroll = transitionsBuilder.shadeMotion?.quickSettingsShadeOverscroll()
     val overlayEffectFactory =
         if (isFullWidthShade) {
             stretchOverscrollEffectFactory
@@ -339,7 +344,10 @@ private fun InternalSceneContainer(
                 overlay(
                     key = overlayKey,
                     userActions = userActionsByContentKey.getOrDefault(overlayKey, emptyMap()),
-                    effectFactory = overlayEffectFactory,
+                    effectFactory =
+                        quickSettingsShadeOverscroll?.takeIf {
+                            overlayKey == Overlays.QuickSettingsShade
+                        } ?: overlayEffectFactory,
                     alwaysCompose = overlay.alwaysCompose,
                     // The bouncer overlay is special and not rendered here, so avoid adding
                     // the fullscreen clickable which modals typically introduce. This avoids

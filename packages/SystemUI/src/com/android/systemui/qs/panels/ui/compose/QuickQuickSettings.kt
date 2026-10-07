@@ -54,6 +54,7 @@ fun ContentScope.QuickQuickSettings(
     modifier: Modifier = Modifier.fillMaxWidth(),
     columnsOverride: Int? = null,
     showAnchor: Boolean = true,
+    reserveIconLabels: Boolean = false,
     listening: () -> Boolean,
 ) {
     val columns = columnsOverride ?: viewModel.columns
@@ -107,7 +108,7 @@ fun ContentScope.QuickQuickSettings(
                             detailsViewModel = null,
                             isVisible = listening,
                         )
-                        if (it.isIcon) {
+                        if (it.isIcon && reserveIconLabels) {
                             Text(
                                 text = it.tile.currentState.label?.toString() ?: "",
                                 style =

@@ -1,5 +1,6 @@
 package com.android.systemui.scene.ui.composable
 
+import com.android.systemui.penguin.ShadeMotion
 import android.content.res.Resources
 import com.android.compose.animation.scene.DefaultInterruptionHandler
 import com.android.compose.animation.scene.SceneTransitions
@@ -30,7 +31,6 @@ import com.android.systemui.scene.ui.composable.transitions.dreamToCommunalTrans
 import com.android.systemui.scene.ui.composable.transitions.dreamToGoneTransition
 import com.android.systemui.scene.ui.composable.transitions.dreamToNotificationsShadeTransition
 import com.android.systemui.scene.ui.composable.transitions.dreamToQuickSettingsShadeTransition
-import com.android.systemui.scene.ui.composable.transitions.fromQuickSettingsShadeTransition
 import com.android.systemui.scene.ui.composable.transitions.dreamToQuickSettingsTransition
 import com.android.systemui.scene.ui.composable.transitions.dreamToSingleShadeTransition
 import com.android.systemui.scene.ui.composable.transitions.dreamToSplitShadeTransition
@@ -45,6 +45,9 @@ import com.android.systemui.scene.ui.composable.transitions.lockscreenToCommunal
 import com.android.systemui.scene.ui.composable.transitions.lockscreenToCommunalUserTransition
 import com.android.systemui.scene.ui.composable.transitions.lockscreenToDreamTransition
 import com.android.systemui.scene.ui.composable.transitions.lockscreenToGoneTransition
+import com.android.systemui.scene.ui.composable.transitions.lockscreenToGoneGlassTransition
+import com.android.systemui.scene.ui.composable.transitions.bouncerToLockscreenGlassTransition
+import com.android.systemui.scene.ui.composable.transitions.lockscreenToBouncerGlassTransition
 import com.android.systemui.scene.ui.composable.transitions.lockscreenToGoneWithAnimationOverLockscreenTransition
 import com.android.systemui.scene.ui.composable.transitions.lockscreenToNotificationsShadeTransition
 import com.android.systemui.scene.ui.composable.transitions.lockscreenToOccludedTransition
@@ -60,7 +63,6 @@ import com.android.systemui.scene.ui.composable.transitions.sharedBouncerTransit
 import com.android.systemui.scene.ui.composable.transitions.toBouncerTransition
 import com.android.systemui.scene.ui.composable.transitions.toNotificationsShadeTransition
 import com.android.systemui.scene.ui.composable.transitions.toQuickActionsTransition
-import com.android.systemui.scene.ui.composable.transitions.notificationsToQuickSettingsShadeTransition
 import com.android.systemui.scene.ui.composable.transitions.toQuickSettingsShadeTransition
 import com.android.systemui.scene.ui.viewmodel.ToBouncerTransitionViewModel
 import com.android.systemui.shade.ui.composable.Shade
@@ -77,14 +79,16 @@ import com.android.systemui.shade.ui.composable.Shade
  *
  * Please keep the list sorted alphabetically.
  */
-class SceneContainerTransitions : SceneContainerTransitionsBuilder {
+class SceneContainerTransitions(
+    override val shadeMotion: ShadeMotion? = null,
+) : SceneContainerTransitionsBuilder {
     override fun build(
         shadeExpansionMotion: VerticalExpandContainerSpec,
         revealHaptics: ContainerRevealHaptics,
         animateQsTilesViewModel: AnimateQsTilesViewModel,
         toBouncerTransitionViewModel: ToBouncerTransitionViewModel,
         resources: Resources,
-        defaultQsStyle: Boolean,
+        liquidGlass: Boolean,
     ): SceneTransitions {
         return transitions {
             interruptionHandler = DefaultInterruptionHandler
@@ -228,7 +232,9 @@ class SceneContainerTransitions : SceneContainerTransitionsBuilder {
             ) {
                 lockscreenToQuickSettingsSceneTransition()
             }
-            from(Scenes.Lockscreen, to = Scenes.Gone) { lockscreenToGoneTransition() }
+            from(Scenes.Lockscreen, to = Scenes.Gone) {
+                if (liquidGlass) lockscreenToGoneGlassTransition() else lockscreenToGoneTransition()
+            }
             from(
                 Scenes.Lockscreen,
                 to = Scenes.Gone,
@@ -277,10 +283,9 @@ class SceneContainerTransitions : SceneContainerTransitionsBuilder {
                 cuj = Cuj.CUJ_NOTIFICATION_SHADE_QS_EXPAND_COLLAPSE,
                 cujTag = TAG_COLLAPSE,
             ) {
-                quickSettingsToShadeTransition(
-                    animateQsTilesAsShared = { animateQsTilesViewModel.animateQsTiles },
-                    defaultQsStyle = defaultQsStyle,
-                )
+                val animateQsTilesAsShared = { animateQsTilesViewModel.animateQsTiles }
+                shadeMotion?.run { quickSettingsToShade(animateQsTilesAsShared) }
+                    ?: quickSettingsToShadeTransition(animateQsTilesAsShared = animateQsTilesAsShared)
             }
             from(
                 Scenes.QuickSettings,
@@ -370,10 +375,9 @@ class SceneContainerTransitions : SceneContainerTransitionsBuilder {
                 cuj = Cuj.CUJ_NOTIFICATION_SHADE_QS_EXPAND_COLLAPSE,
                 cujTag = TAG_EXPAND,
             ) {
-                shadeToQuickSettingsTransition(
-                    animateQsTilesAsShared = { animateQsTilesViewModel.animateQsTiles },
-                    defaultQsStyle = defaultQsStyle,
-                )
+                val animateQsTilesAsShared = { animateQsTilesViewModel.animateQsTiles }
+                shadeMotion?.run { shadeToQuickSettings(animateQsTilesAsShared) }
+                    ?: shadeToQuickSettingsTransition(animateQsTilesAsShared = animateQsTilesAsShared)
             }
             from(
                 Scenes.Communal,
@@ -478,11 +482,17 @@ class SceneContainerTransitions : SceneContainerTransitionsBuilder {
                 fromBouncerTransition()
             }
             from(Scenes.Lockscreen, to = Overlays.Bouncer) {
-                lockscreenToBouncerTransition(
-                    toBouncerTransitionViewModel = toBouncerTransitionViewModel
-                )
+                if (liquidGlass) {
+                    lockscreenToBouncerGlassTransition(toBouncerTransitionViewModel)
+                } else {
+                    lockscreenToBouncerTransition(
+                        toBouncerTransitionViewModel = toBouncerTransitionViewModel
+                    )
+                }
             }
-            from(Overlays.Bouncer, to = Scenes.Lockscreen) { bouncerToLockscreenTransition() }
+            from(Overlays.Bouncer, to = Scenes.Lockscreen) {
+                if (liquidGlass) bouncerToLockscreenGlassTransition() else bouncerToLockscreenTransition()
+            }
             from(
                 Overlays.Bouncer,
                 to = Scenes.Lockscreen,
@@ -510,11 +520,12 @@ class SceneContainerTransitions : SceneContainerTransitionsBuilder {
                 cuj = Cuj.CUJ_NOTIFICATION_SHADE_EXPAND_COLLAPSE,
                 cujTag = TAG_EXPAND,
             ) {
-                toNotificationsShadeTransition(
-                    enableSharedElements = true,
-                    shadeExpansionMotion = shadeExpansionMotion,
-                    revealHaptics = revealHaptics,
-                )
+                shadeMotion?.run { toNotificationsShade(1.0, true) }
+                    ?: toNotificationsShadeTransition(
+                        enableSharedElements = true,
+                        shadeExpansionMotion = shadeExpansionMotion,
+                        revealHaptics = revealHaptics,
+                    )
             }
             from(
                 Overlays.NotificationsShade,
@@ -523,11 +534,12 @@ class SceneContainerTransitions : SceneContainerTransitionsBuilder {
                 cujTag = TAG_COLLAPSE,
             ) {
                 reversed {
-                    toNotificationsShadeTransition(
-                        shadeExpansionMotion = shadeExpansionMotion,
-                        enableSharedElements = false,
-                        revealHaptics = revealHaptics,
-                    )
+                    shadeMotion?.run { toNotificationsShade(1.0, false) }
+                        ?: toNotificationsShadeTransition(
+                            shadeExpansionMotion = shadeExpansionMotion,
+                            enableSharedElements = false,
+                            revealHaptics = revealHaptics,
+                        )
                 }
             }
             from(
@@ -536,11 +548,12 @@ class SceneContainerTransitions : SceneContainerTransitionsBuilder {
                 cuj = Cuj.CUJ_NOTIFICATION_SHADE_EXPAND_COLLAPSE,
                 cujTag = TAG_EXPAND,
             ) {
-                toNotificationsShadeTransition(
-                    shadeExpansionMotion = shadeExpansionMotion,
-                    enableSharedElements = false,
-                    revealHaptics = revealHaptics,
-                )
+                shadeMotion?.run { toNotificationsShade(1.0, false) }
+                    ?: toNotificationsShadeTransition(
+                        shadeExpansionMotion = shadeExpansionMotion,
+                        enableSharedElements = false,
+                        revealHaptics = revealHaptics,
+                    )
             }
             from(
                 Scenes.Gone,
@@ -548,10 +561,11 @@ class SceneContainerTransitions : SceneContainerTransitionsBuilder {
                 cuj = Cuj.CUJ_NOTIFICATION_SHADE_QS_EXPAND_COLLAPSE,
                 cujTag = TAG_EXPAND,
             ) {
-                toQuickSettingsShadeTransition(
-                    shadeExpansionMotion = shadeExpansionMotion,
-                    revealHaptics = revealHaptics,
-                )
+                shadeMotion?.run { toQuickSettingsShade(1.0) }
+                    ?: toQuickSettingsShadeTransition(
+                        shadeExpansionMotion = shadeExpansionMotion,
+                        revealHaptics = revealHaptics,
+                    )
             }
             from(
                 Overlays.QuickSettingsShade,
@@ -559,15 +573,15 @@ class SceneContainerTransitions : SceneContainerTransitionsBuilder {
                 cuj = Cuj.CUJ_NOTIFICATION_SHADE_QS_EXPAND_COLLAPSE,
                 cujTag = TAG_COLLAPSE,
             ) {
-                fromQuickSettingsShadeTransition()
+                shadeMotion?.run { fromQuickSettingsShade() }
+                    ?: reversed {
+                        toQuickSettingsShadeTransition(
+                            shadeExpansionMotion = shadeExpansionMotion,
+                            revealHaptics = revealHaptics,
+                        )
+                    }
             }
-
-            from(Overlays.NotificationsShade, to = Overlays.QuickSettingsShade) {
-                notificationsToQuickSettingsShadeTransition()
-            }
-            from(Overlays.QuickSettingsShade, to = Overlays.NotificationsShade) {
-                reversed { notificationsToQuickSettingsShadeTransition() }
-            }
+            shadeMotion?.let { motion -> with(motion) { overlaySwitchTransitions() } }
 
             from(
                 Scenes.Gone,
@@ -576,12 +590,13 @@ class SceneContainerTransitions : SceneContainerTransitionsBuilder {
                 cuj = Cuj.CUJ_NOTIFICATION_SHADE_EXPAND_COLLAPSE,
                 cujTag = TAG_EXPAND,
             ) {
-                toNotificationsShadeTransition(
-                    durationScale = 0.9,
-                    enableSharedElements = false,
-                    shadeExpansionMotion = shadeExpansionMotion,
-                    revealHaptics = revealHaptics,
-                )
+                shadeMotion?.run { toNotificationsShade(0.9, false) }
+                    ?: toNotificationsShadeTransition(
+                        durationScale = 0.9,
+                        enableSharedElements = false,
+                        shadeExpansionMotion = shadeExpansionMotion,
+                        revealHaptics = revealHaptics,
+                    )
             }
             from(
                 Scenes.Gone,
@@ -590,11 +605,12 @@ class SceneContainerTransitions : SceneContainerTransitionsBuilder {
                 cuj = Cuj.CUJ_NOTIFICATION_SHADE_QS_EXPAND_COLLAPSE,
                 cujTag = TAG_EXPAND,
             ) {
-                toQuickSettingsShadeTransition(
-                    durationScale = 0.9,
-                    shadeExpansionMotion = shadeExpansionMotion,
-                    revealHaptics = revealHaptics,
-                )
+                shadeMotion?.run { toQuickSettingsShade(0.9) }
+                    ?: toQuickSettingsShadeTransition(
+                        durationScale = 0.9,
+                        shadeExpansionMotion = shadeExpansionMotion,
+                        revealHaptics = revealHaptics,
+                    )
             }
             from(
                 Scenes.Lockscreen,
