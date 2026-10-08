@@ -204,21 +204,6 @@
     <!-- Preferred Network tile -->
     <string name="quick_settings_preferred_network_settings">Settings</string>
 
-    <!-- iOS style power menu. Labels are lower case on purpose, to match the design. -->
-    <string name="power_menu_ios_power_off">slide to power off</string>
-    <string name="power_menu_ios_restart">restart</string>
-    <string name="power_menu_ios_emergency">emergency call</string>
-    <string name="power_menu_ios_emergency_hint">Slide to Call Emergency Services</string>
-    <string name="power_menu_ios_emergency_thumb_label">SOS</string>
-    <string name="power_menu_ios_close">Close</string>
-
-    <!-- Expandable volume panel style -->
-    <string name="volume_panel_expand">Show all volume sliders</string>
-    <string name="volume_panel_collapse">Show only the current volume slider</string>
-
-    <!-- Header of the One UI volume panel style -->
-    <string name="volume_panel_oneui_title">Volume</string>
-
     <!-- Heads up snooze toast -->
     <string name="heads_up_snooze_message_one_minute"><xliff:g id="string">%s</xliff:g> - Peeking notification are snoozing for 1 minute.</string>
     <string name="heads_up_snooze_message"><xliff:g id="string">%1$s</xliff:g> - Peeking notifications are snoozing for <xliff:g id="number">%2$d</xliff:g> minutes.</string>
@@ -275,4 +260,8 @@
     <string name="penguin_cc_reset">Reset</string>
     <string name="penguin_edit_subtitle">Tap to resize, long press to move</string>
     <string name="penguin_edit_more">Add tiles</string>
+
+    <!-- Empty notification shade under Liquid Glass -->
+    <string name="liquid_glass_no_older_notifications">No Older Notifications</string>
+
 </resources>
