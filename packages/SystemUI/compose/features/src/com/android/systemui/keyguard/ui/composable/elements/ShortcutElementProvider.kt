@@ -52,6 +52,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.RectangleShape
 import androidx.compose.ui.graphics.drawscope.drawIntoCanvas
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.graphics.nativeCanvas
 import androidx.compose.ui.graphics.painter.Painter
 import androidx.compose.ui.input.pointer.PointerEventType
@@ -80,17 +81,24 @@ import com.android.systemui.keyguard.ui.binder.KeyguardBottomAreaVibrations
 import com.android.systemui.keyguard.ui.viewmodel.KeyguardQuickAffordanceHapticViewModel
 import com.android.systemui.keyguard.ui.viewmodel.KeyguardQuickAffordanceViewModel
 import com.android.systemui.keyguard.ui.viewmodel.KeyguardQuickAffordancesCombinedViewModel
+import com.android.systemui.penguin.CosFeature
+import com.android.systemui.penguin.LockscreenPlayer
+import com.android.systemui.penguin.rememberCosFeature
 import com.android.systemui.plugins.FalsingManager
 import com.android.systemui.plugins.keyguard.ui.composable.elements.BaseLockscreenElement.ElementSource
 import com.android.systemui.plugins.keyguard.ui.composable.elements.LockscreenElement
 import com.android.systemui.plugins.keyguard.ui.composable.elements.LockscreenElementKeys.Shortcuts
 import com.android.systemui.plugins.keyguard.ui.composable.elements.LockscreenElementProvider
 import com.android.systemui.plugins.keyguard.ui.composable.elements.LockscreenScope
+import com.android.systemui.qs.shared.style.GlassBackdrop
+import com.android.systemui.qs.shared.style.LiquidGlassTune
+import com.android.systemui.qs.shared.style.glassBackdropRegion
 import com.android.systemui.res.R
 import com.android.systemui.shade.ShadeDisplayAware
 import com.android.systemui.statusbar.KeyguardIndicationController
 import com.android.systemui.statusbar.VibratorHelper
 import com.android.systemui.window.domain.interactor.WindowRootViewBlurInteractor
+import java.util.Optional
 import javax.inject.Inject
 import kotlinx.coroutines.flow.Flow
 import org.xmlpull.v1.XmlPullParser
@@ -108,7 +116,9 @@ constructor(
     private val hapticsViewModelFactory: KeyguardQuickAffordanceHapticViewModel.Factory,
     private val windowRootViewBlurInteractor: WindowRootViewBlurInteractor,
     private val logger: KeyguardQuickAffordancesLogger,
+    player: Optional<LockscreenPlayer>,
 ) : LockscreenElementProvider {
+    private val player = player.orElse(null)
 
     override val elements: List<LockscreenElement> by lazy {
         listOf(
@@ -170,7 +180,11 @@ constructor(
             if (quickAffordanceViewModel.isActivated) {
                 MaterialTheme.colorScheme.onPrimaryFixed
             } else {
-                MaterialTheme.colorScheme.onSurface
+                lerp(
+                    MaterialTheme.colorScheme.onSurface,
+                    Color.White,
+                    player?.expansion ?: 0f,
+                )
             }
 
         failureAnimation(triggerFailed, setTriggerFailed, hapticsViewModel, xAnimation)
@@ -192,6 +206,7 @@ constructor(
             )
 
         val alpha by alphaFlow.collectAsStateWithLifecycle(initialValue = 1f)
+        val cos = rememberCosFeature(CosFeature.LockscreenGlass)
 
         val painter =
             painterResource(
@@ -230,8 +245,8 @@ constructor(
                             alpha = if (quickAffordanceViewModel.isDimmed) DIM_ALPHA else alpha,
                             translationX = xAnimation.value.x,
                         )
-                        .drawBlurBehind(quickAffordanceViewModel, alpha)
-                        .shortcutBackground(quickAffordanceViewModel)
+                        .drawBlurBehind(quickAffordanceViewModel, alpha, cos)
+                        .shortcutBackground(quickAffordanceViewModel, alpha, cos)
                         .clickableShortcut(
                             expandable,
                             quickAffordanceViewModel,
@@ -288,6 +303,7 @@ constructor(
     private fun Modifier.drawBlurBehind(
         viewModel: KeyguardQuickAffordanceViewModel,
         alpha: Float,
+        cos: Boolean,
     ): Modifier {
         if (enableLockscreenBlur()) {
             val viewRootImpl = LocalView.current.viewRootImpl
@@ -299,10 +315,14 @@ constructor(
             val isBlurSupported by
                 windowRootViewBlurInteractor.isBlurCurrentlySupported.collectAsStateWithLifecycle()
 
-            if (isBlurSupported) {
+            if (isBlurSupported && !(cos && GlassBackdrop.drawing.value)) {
                 return drawBehind {
                     drawable.apply {
-                        setBlurRadius(blurRadius.roundToPx())
+                        setMaterial(if (cos) 1 else 0)
+                        setBlurRadius(
+                            if (cos) LiquidGlassTune.f("cos_blur", 62.0f).toInt()
+                            else blurRadius.roundToPx()
+                        )
                         setCornerRadius(cornerRadius.toPx())
                         val backgroundAlpha = if (viewModel.isDimmed) DIM_ALPHA else alpha
                         setAlpha((backgroundAlpha * 255).toInt())
@@ -326,19 +346,34 @@ constructor(
     }
 
     @Composable
-    private fun Modifier.shortcutBackground(viewModel: KeyguardQuickAffordanceViewModel): Modifier {
+    private fun Modifier.shortcutBackground(
+        viewModel: KeyguardQuickAffordanceViewModel,
+        alpha: Float,
+        cos: Boolean,
+    ): Modifier {
+        if (cos) {
+            return if (viewModel.isActivated) background(CosActiveShortcutColor, CircleShape)
+            else
+                glassBackdropRegion(
+                    dimensionResource(R.dimen.keyguard_affordance_fixed_height) / 2,
+                    if (viewModel.isDimmed) DIM_ALPHA else alpha,
+                )
+        }
         if (!viewModel.isSelected) {
             val isBlurSupported by
                 windowRootViewBlurInteractor.isBlurCurrentlySupported.collectAsStateWithLifecycle()
+            val color =
+                if (viewModel.isActivated) {
+                    MaterialTheme.colorScheme.primaryFixed
+                } else if (enableLockscreenBlur() && isBlurSupported) {
+                    LocalAndroidColorScheme.current.surfaceEffect1
+                } else {
+                    MaterialTheme.colorScheme.surfaceContainerHigh
+                }
             return this.background(
                 color =
-                    if (viewModel.isActivated) {
-                        MaterialTheme.colorScheme.primaryFixed
-                    } else if (enableLockscreenBlur() && isBlurSupported) {
-                        LocalAndroidColorScheme.current.surfaceEffect1
-                    } else {
-                        MaterialTheme.colorScheme.surfaceContainerHigh
-                    },
+                    if (viewModel.isActivated) color
+                    else lerp(color, ExpandedMediaShortcutColor, player?.expansion ?: 0f),
                 shape = CircleShape,
             )
         }
@@ -511,3 +546,7 @@ constructor(
         }
     }
 }
+
+private val ExpandedMediaShortcutColor = Color(0xFF2C2C2E).copy(alpha = 0.6f)
+
+private val CosActiveShortcutColor = Color(0xE6FFFFFF)

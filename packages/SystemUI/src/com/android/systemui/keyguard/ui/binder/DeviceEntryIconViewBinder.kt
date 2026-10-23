@@ -31,10 +31,8 @@ import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.repeatOnLifecycle
 import com.android.app.tracing.coroutines.launchTraced as launch
 import com.android.internal.graphics.drawable.BackgroundBlurDrawable
-import com.android.systemui.Dependency
 import com.android.systemui.Flags
 import com.android.systemui.Flags.enableLockscreenBlur
-import com.android.systemui.biometrics.UdfpsIconDrawable
 import com.android.systemui.common.ui.view.BackgroundBlurAlphaSync
 import com.android.systemui.common.ui.view.TouchHandlingView
 import com.android.systemui.keyguard.ui.view.DeviceEntryIconView
@@ -42,10 +40,11 @@ import com.android.systemui.keyguard.ui.viewmodel.DeviceEntryBackgroundViewModel
 import com.android.systemui.keyguard.ui.viewmodel.DeviceEntryForegroundViewModel
 import com.android.systemui.keyguard.ui.viewmodel.DeviceEntryIconViewModel
 import com.android.systemui.lifecycle.repeatWhenAttached
+import com.android.systemui.penguin.CosFeature
+import com.android.systemui.penguin.CosFeatures
 import com.android.systemui.plugins.FalsingManager
 import com.android.systemui.res.R
 import com.android.systemui.statusbar.VibratorHelper
-import com.android.systemui.tuner.TunerService
 import com.android.systemui.util.kotlin.DisposableHandles
 import com.android.systemui.window.domain.interactor.WindowRootViewBlurInteractor
 import com.google.android.msdl.data.model.MSDLToken
@@ -54,24 +53,10 @@ import kotlin.math.min
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.DisposableHandle
-import kotlinx.coroutines.Job
-import kotlinx.coroutines.SupervisorJob
-import kotlinx.coroutines.awaitCancellation
-import kotlinx.coroutines.cancel
-import kotlinx.coroutines.channels.awaitClose
-import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.callbackFlow
-import kotlinx.coroutines.flow.stateIn
-import kotlinx.coroutines.flow.SharingStarted
-import android.provider.Settings
-import android.os.UserHandle
-import com.android.internal.util.crdroid.Utils
+import kotlinx.coroutines.flow.combine
 
 object DeviceEntryIconViewBinder {
     private const val TAG = "DeviceEntryIconViewBinder"
-
-    private final val UDFPS_ICON: String =
-            "system:" + Settings.System.UDFPS_ICON
 
     /**
      * Updates UI for:
@@ -96,35 +81,6 @@ object DeviceEntryIconViewBinder {
         overrideColor: Color? = null,
     ): DisposableHandle {
         val disposables = DisposableHandles()
-
-        val packageInstalled = Utils.isPackageInstalled(
-            view.context, "com.crdroid.udfps.icons"
-        )
-
-        val tunerScope =
-            CoroutineScope(
-                applicationScope.coroutineContext +
-                    SupervisorJob(applicationScope.coroutineContext[Job])
-            )
-        disposables += DisposableHandle { tunerScope.cancel() }
-
-        val shouldUseCustomUdfpsIcon: StateFlow<Boolean> = callbackFlow {
-            val callback = object : TunerService.Tunable {
-                override fun onTuningChanged(key: String, newValue: String?) {
-                    if (key == UDFPS_ICON) {
-                        trySend(TunerService.parseIntegerSwitch(newValue, false)).isSuccess
-                    }
-                }
-            }
-            Dependency.get(TunerService::class.java).addTunable(callback, UDFPS_ICON)
-
-            awaitClose { Dependency.get(TunerService::class.java).removeTunable(callback) }
-        }.stateIn(
-            scope = tunerScope,
-            started = SharingStarted.Eagerly,
-            initialValue = false
-        )
-
         val touchHandlingView = view.touchHandlingView
         val fgIconView = view.iconView
         val bgView = view.bgView
@@ -165,7 +121,7 @@ object DeviceEntryIconViewBinder {
                 if (height <= 0 || width <= 0) {
                     return@OnLayoutChangeListener
                 }
-                if (height == oldBottom - oldTop && width == oldRight - oldLeft) {
+                if (height == oldBottom - oldTop && width == oldLeft - oldRight) {
                     return@OnLayoutChangeListener
                 }
                 v?.background?.let {
@@ -180,19 +136,10 @@ object DeviceEntryIconViewBinder {
                 repeatOnLifecycle(Lifecycle.State.CREATED) {
                     launch("$TAG#viewModel.useBackgroundProtection") {
                         viewModel.useBackgroundProtection.collect { useBackgroundProtection ->
-                            if (shouldUseCustomUdfpsIcon.value && packageInstalled) {
-                                bgView.visibility = View.GONE
+                            if (useBackgroundProtection) {
+                                bgView.visibility = View.VISIBLE
                             } else {
-                                bgView.visibility = if (useBackgroundProtection) View.VISIBLE else View.GONE
-                            }
-                        }
-                    }
-                    launch("$TAG#shouldUseCustomUdfpsIcon") {
-                        shouldUseCustomUdfpsIcon.collect { useCustomIcon ->
-                            if (useCustomIcon && packageInstalled) {
                                 bgView.visibility = View.GONE
-                            } else {
-                                bgView.visibility = if (viewModel.useBackgroundProtection.value) View.VISIBLE else View.GONE
                             }
                         }
                     }
@@ -304,10 +251,6 @@ object DeviceEntryIconViewBinder {
                     launch("$TAG#fpIconView.viewModel") {
                         fgViewModel.viewModel.collect { viewModel ->
                             Log.d(TAG, "Updating device entry icon image state $viewModel")
-                            fgIconView.setImageState(
-                                view.getIconState(viewModel.type, viewModel.useAodVariant),
-                                /* merge */ false,
-                            )
                             if (viewModel.type.contentDescriptionResId != -1) {
                                 fgIconView.contentDescription =
                                     fgIconView.resources.getString(
@@ -316,16 +259,18 @@ object DeviceEntryIconViewBinder {
                             }
                             fgIconView.imageTintList =
                                 ColorStateList.valueOf(overrideColor?.toArgb() ?: viewModel.tint)
-                            if (fgIconView.drawable.current !is UdfpsIconDrawable) {
-                                fgIconView.setPadding(
-                                    viewModel.padding,
-                                    viewModel.padding,
-                                    viewModel.padding,
-                                    viewModel.padding
-                                )
-                            } else {
-                                fgIconView.setPadding(0, 0, 0, 0)
-                            }
+                            fgIconView.setPadding(
+                                viewModel.padding,
+                                viewModel.padding,
+                                viewModel.padding,
+                                viewModel.padding,
+                            )
+                            // Set image state at the end after updating other view state. This
+                            // method forces the ImageView to recompute the bounds of the drawable.
+                            fgIconView.setImageState(
+                                view.getIconState(viewModel.type, viewModel.useAodVariant),
+                                /* merge */ false,
+                            )
                             // Invalidate, just in case the padding changes just after icon changes
                             fgIconView.invalidate()
                         }
@@ -347,26 +292,17 @@ object DeviceEntryIconViewBinder {
                                 setVisible(false, false)
                             }
                         bgView.addOnLayoutChangeListener(layoutChangeListener)
+                        // The blur region only knows the drawable's own alpha: follow the alpha
+                        // the icon is really drawn with (keyguard root fade on unlock, shade
+                        // drag) so the blur does not outlive the icon.
+                        val blurAlphaSync =
+                            BackgroundBlurAlphaSync(bgView) {
+                                    bgView.background as? BackgroundBlurDrawable
+                                }
+                                .start()
                         bgView.doOnDetach {
                             bgView.removeOnLayoutChangeListener(layoutChangeListener)
-                        }
-
-                        // The blur region only knows the drawable's own alpha: follow the alpha
-                        // (and visibility) the background is really drawn with - keyguard root
-                        // fade on unlock, shade drag, bgViewModel alpha, custom UDFPS icon hiding
-                        // the background - so the blur never outlives the view. This is the only
-                        // writer of the blur drawable's alpha.
-                        launch("$TAG#blurAlphaSync") {
-                            val blurAlphaSync =
-                                BackgroundBlurAlphaSync(bgView) {
-                                        bgView.background as? BackgroundBlurDrawable
-                                    }
-                                    .start()
-                            try {
-                                awaitCancellation()
-                            } finally {
-                                blurAlphaSync.dispose()
-                            }
+                            blurAlphaSync.dispose()
                         }
 
                         launch("$TAG#windowRootViewBlurInteractor.isBlurCurrentlySupported") {
@@ -379,19 +315,20 @@ object DeviceEntryIconViewBinder {
 
                     launch("$TAG#bgViewModel.alpha") {
                         bgViewModel.alpha.collect { alpha ->
-                            // With lockscreen blur, BackgroundBlurAlphaSync folds this into the
-                            // blur drawable on the next frame.
                             bgView.alpha = alpha
+                            if (enableLockscreenBlur()) {
+                                bgView.background?.alpha = (255 * alpha).toInt()
+                            }
                         }
                     }
                     launch("$TAG#bgViewModel.color") {
-                        bgViewModel.color.collect { color ->
-                            if (!shouldUseCustomUdfpsIcon.value || !packageInstalled) {
-                                bgView.imageTintList = ColorStateList.valueOf(color)
-                            } else {
-                                bgView.imageTintList = null
+                        combine(
+                                bgViewModel.color,
+                                CosFeatures.state(view.context, CosFeature.LockscreenGlass),
+                            ) { color, cos ->
+                                if (cos) android.graphics.Color.TRANSPARENT else color
                             }
-                        }
+                            .collect { color -> bgView.imageTintList = ColorStateList.valueOf(color) }
                     }
                 }
             }
