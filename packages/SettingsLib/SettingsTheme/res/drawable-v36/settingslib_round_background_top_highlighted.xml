@@ -26,8 +26,8 @@
             android:shape="rectangle"
             android:tint="?android:attr/colorAccent">
             <corners
-                android:bottomLeftRadius="4dp"
-                android:bottomRightRadius="4dp"
+                android:bottomLeftRadius="8dp"
+                android:bottomRightRadius="8dp"
                 android:topLeftRadius="@dimen/settingslib_preference_corner_radius"
                 android:topRightRadius="@dimen/settingslib_preference_corner_radius" />
             <solid android:color="#42000000" />

@@ -26,9 +26,9 @@
             <solid
                 android:color="@color/settingslib_materialColorSurfaceBright" />
             <corners
-                android:topLeftRadius="4dp"
+                android:topLeftRadius="8dp"
                 android:bottomLeftRadius="@dimen/settingslib_preference_corner_radius"
-                android:topRightRadius="4dp"
+                android:topRightRadius="8dp"
                 android:bottomRightRadius="@dimen/settingslib_preference_corner_radius" />
         </shape>
     </item>

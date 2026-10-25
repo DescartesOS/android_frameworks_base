@@ -24,7 +24,7 @@
         <shape
             android:shape="rectangle"
             android:tint="?android:attr/colorAccent">
-            <corners android:radius="4dp" />
+            <corners android:radius="8dp" />
             <solid android:color="#42000000" />
         </shape>
     </item>
