@@ -92,6 +92,8 @@ import com.android.internal.widget.CallLayout;
 import com.android.internal.widget.ConversationLayout;
 import com.android.internal.widget.MessagingLayout;
 import com.android.systemui.Flags;
+import com.android.systemui.penguin.CosFeature;
+import com.android.systemui.penguin.CosFeatures;
 import com.android.systemui.qs.shared.style.LiquidGlass;
 import com.android.systemui.plugins.FalsingManager;
 import com.android.systemui.plugins.PluginListener;
@@ -1363,7 +1365,13 @@ public class ExpandableNotificationRow extends ActivatableNotificationView
     private void updateHeadsUpGlass() {
         if (mBackgroundNormal != null) {
             mBackgroundNormal.setHeadsUpGlass(mIsHeadsUp && isPinned());
+            mBackgroundNormal.setBlurBackgroundEnabled(usesBlurredBackground());
         }
+    }
+
+    @Override
+    protected boolean blursAsHeadsUp() {
+        return mIsHeadsUp && isPinned() && CosFeatures.isOn(mContext, CosFeature.Shade);
     }
 
     @Override
