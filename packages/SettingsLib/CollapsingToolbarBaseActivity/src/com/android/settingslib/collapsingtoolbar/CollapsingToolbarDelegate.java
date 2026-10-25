@@ -51,6 +51,17 @@ import com.google.android.material.appbar.CollapsingToolbarLayout;
 import com.google.android.material.button.MaterialButton;
 import com.google.android.material.floatingtoolbar.FloatingToolbarLayout;
 
+import android.graphics.RenderEffect;
+import android.graphics.Shader;
+import android.graphics.drawable.ColorDrawable;
+import android.os.PowerManager;
+import android.os.SystemProperties;
+import android.view.ViewOutlineProvider;
+import android.view.WindowManager;
+
+import java.lang.reflect.Method;
+import java.util.function.Consumer;
+
 import java.util.List;
 
 /**
@@ -222,7 +233,112 @@ public class CollapsingToolbarDelegate {
                                         .build()));
             }
         }
+        setupFrostedCollapsingToolbar(collapsingToolbarLayout, appBarLayout);
         autoSetCollapsingToolbarLayoutScrolling(appBarLayout);
+    }
+
+    private void setupFrostedCollapsingToolbar(
+            @Nullable CollapsingToolbarLayout collapsingToolbarLayout,
+            @Nullable AppBarLayout appBarLayout) {
+        if (collapsingToolbarLayout == null || appBarLayout == null) {
+            return;
+        }
+
+        final Context context = appBarLayout.getContext();
+        final int surfaceColor = context.getColor(
+                com.android.settingslib.widget.theme.R.color.settingslib_materialColorSurfaceContainerHigh);
+        final boolean blurSupported = isBlurSupported(context);
+        final int alpha = blurSupported ? 0xCC : 0xEE;
+        final int scrimColor = (surfaceColor & 0x00FFFFFF) | (alpha << 24);
+
+        collapsingToolbarLayout.setContentScrim(new ColorDrawable(scrimColor));
+
+        appBarLayout.setWillNotDraw(false);
+        appBarLayout.setOutlineProvider(ViewOutlineProvider.BOUNDS);
+        appBarLayout.setClipToOutline(true);
+
+        final float blurRadius = 25.0f;
+
+        appBarLayout.addOnOffsetChangedListener(new AppBarLayout.OnOffsetChangedListener() {
+            private boolean mAppliedBlur = false;
+
+            @Override
+            public void onOffsetChanged(AppBarLayout appBar, int verticalOffset) {
+                final boolean scrolled = Math.abs(verticalOffset) > 0;
+                if (scrolled != mAppliedBlur) {
+                    mAppliedBlur = scrolled;
+                    if (scrolled && isBlurSupported(appBar.getContext())) {
+                        applyBackdropBlur(appBar, blurRadius);
+                    } else {
+                        applyBackdropBlur(appBar, 0);
+                    }
+                }
+            }
+        });
+
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+            final WindowManager wm = context.getSystemService(WindowManager.class);
+            if (wm != null) {
+                final Consumer<Boolean> blurListener = enabled -> {
+                    final boolean supported = enabled && isBlurSupported(context);
+                    final int newAlpha = supported ? 0xCC : 0xEE;
+                    collapsingToolbarLayout.setContentScrim(
+                            new ColorDrawable((surfaceColor & 0x00FFFFFF) | (newAlpha << 24)));
+                    if (Math.abs(appBarLayout.getTop()) > 0) {
+                        applyBackdropBlur(appBarLayout, supported ? blurRadius : 0);
+                    }
+                };
+                appBarLayout.addOnAttachStateChangeListener(new View.OnAttachStateChangeListener() {
+                    @Override
+                    public void onViewAttachedToWindow(View v) {
+                        try {
+                            wm.addCrossWindowBlurEnabledListener(blurListener);
+                        } catch (Throwable ignored) {
+                        }
+                    }
+
+                    @Override
+                    public void onViewDetachedFromWindow(View v) {
+                        try {
+                            wm.removeCrossWindowBlurEnabledListener(blurListener);
+                        } catch (Throwable ignored) {
+                        }
+                    }
+                });
+            }
+        }
+    }
+
+    private static boolean isBlurSupported(Context context) {
+        if (!SystemProperties.getBoolean("ro.surface_flinger.supports_background_blur", false)) {
+            return false;
+        }
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+            WindowManager wm = context.getSystemService(WindowManager.class);
+            if (wm != null && !wm.isCrossWindowBlurEnabled()) {
+                return false;
+            }
+        }
+        PowerManager pm = context.getSystemService(PowerManager.class);
+        if (pm != null && pm.isPowerSaveMode()) {
+            return false;
+        }
+        return true;
+    }
+
+    private static void applyBackdropBlur(View view, float radius) {
+        try {
+            if (radius > 0) {
+                RenderEffect effect = RenderEffect.createBlurEffect(
+                        radius, radius, Shader.TileMode.CLAMP);
+                Method method = View.class.getMethod("setBackdropRenderEffect", RenderEffect.class);
+                method.invoke(view, effect);
+            } else {
+                Method method = View.class.getMethod("setBackdropRenderEffect", RenderEffect.class);
+                method.invoke(view, (Object) null);
+            }
+        } catch (Throwable ignored) {
+        }
     }
 
     /** Initialize toolbar buttons container. */
