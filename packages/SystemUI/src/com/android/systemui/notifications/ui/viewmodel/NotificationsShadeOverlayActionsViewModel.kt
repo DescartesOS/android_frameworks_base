@@ -30,7 +30,6 @@ import com.android.systemui.penguin.CosFeature
 import com.android.systemui.penguin.CosFeatures
 import com.android.systemui.penguin.CosShadeSwitch
 import com.android.systemui.scene.shared.model.Overlays
-import com.android.systemui.scene.ui.viewmodel.SceneContainerArea.EndHalf
 import com.android.systemui.scene.ui.viewmodel.SceneContainerArea.TopEdgeEndHalf
 import com.android.systemui.scene.ui.viewmodel.UserActionsViewModel
 import dagger.assisted.AssistedFactory

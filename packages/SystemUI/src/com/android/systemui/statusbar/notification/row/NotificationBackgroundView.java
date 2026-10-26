@@ -96,6 +96,8 @@ public class NotificationBackgroundView extends View implements Dumpable,
     private boolean mDrawDismissButtonCutout = false;
     private boolean mOnKeyguard = true;
 
+    private boolean mIsBlurSupported = false;
+
     public NotificationBackgroundView(Context context, AttributeSet attrs) {
         super(context, attrs);
         mDontModifyCorners = getResources().getBoolean(R.bool.config_clipNotificationsToOutline);
@@ -103,13 +105,22 @@ public class NotificationBackgroundView extends View implements Dumpable,
                 R.color.notification_state_color_light);
         mDarkColoredStatefulColors = getResources().getColorStateList(
                 R.color.notification_state_color_dark);
-        if (notificationRowTransparency()) {
+        if (mIsBlurSupported || notificationRowTransparency()) {
             mNormalColor = SurfaceEffectColors.surfaceEffect1(getContext());
-        } else  {
+        } else {
             mNormalColor = mContext.getColor(
                     com.android.internal.R.color.materialColorSurfaceContainerHigh);
         }
         mFocusOverlayStroke = getResources().getDimension(R.dimen.notification_focus_stroke_width);
+    }
+
+    /** Sets whether blur/translucency is supported for notification rows. */
+    public void setIsBlurSupported(boolean isBlurSupported) {
+        if (mIsBlurSupported != isBlurSupported) {
+            mIsBlurSupported = isBlurSupported;
+            setStatefulColors();
+            invalidate();
+        }
     }
 
     @Override
@@ -458,7 +469,7 @@ public class NotificationBackgroundView extends View implements Dumpable,
         final boolean cos = mCosMaterial != 0 && tintColor == mNormalColor;
         final int surface = cos || (glassOnBlur() && tintColor == mNormalColor)
                 ? Color.TRANSPARENT : surfaceFor(tintColor);
-        if (notificationRowTransparency()) {
+        if (mIsBlurSupported || notificationRowTransparency()) {
             ((GradientDrawable) baseLayer.mutate()).setColor(surface);
         } else {
             baseLayer.mutate().setTintMode(PorterDuff.Mode.SRC_ATOP);
