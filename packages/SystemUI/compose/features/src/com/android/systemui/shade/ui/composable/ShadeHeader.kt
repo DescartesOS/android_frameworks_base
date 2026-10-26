@@ -158,6 +158,7 @@ object ShadeHeader {
         val ExpandedHeight = 120.dp
         val ChipPaddingHorizontal = 6.dp
         val ChipPaddingVertical = 4.dp
+        val StatusIconsEndSpacing = 6.dp
     }
 
     object Colors {
@@ -678,6 +679,7 @@ private fun ContentScope.Clock(
         }
     }
 }
+
 
 @Composable
 private fun BatteryInfo(

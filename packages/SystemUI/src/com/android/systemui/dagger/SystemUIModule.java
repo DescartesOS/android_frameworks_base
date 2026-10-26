@@ -108,6 +108,7 @@ import com.android.systemui.motioncues.MotionCuesModule;
 import com.android.systemui.navigationbar.NavigationBarComponent;
 import com.android.systemui.navigationbar.gestural.dagger.GestureModule;
 import com.android.systemui.notetask.NoteTaskModule;
+import com.android.systemui.penguin.PenguinHooksModule;
 import com.android.systemui.people.PeopleModule;
 import com.android.systemui.personalcontext.dagger.PersonalContextModule;
 import com.android.systemui.personalcontext.dagger.PersonalContextModuleCompat;
@@ -236,6 +237,7 @@ import javax.inject.Named;
  * may not appreciate that.
  */
 @Module(includes = {
+        PenguinHooksModule.class,
         ActivityModule.class,
         AmbientModule.class,
         AppOpsModule.class,

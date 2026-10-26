@@ -16,7 +16,6 @@
 
 package com.android.systemui.qs.ui.composable
 
-import android.media.AudioManager
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
@@ -44,7 +43,6 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.runtime.CompositionLocalProvider
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.ReadOnlyComposable
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
@@ -75,14 +73,6 @@ import androidx.compose.ui.unit.DpSize
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.android.compose.PlatformSliderDefaults
-import com.android.systemui.common.shared.colors.SystemUISliderColors
-import com.android.systemui.penguin.CosFeature
-import com.android.systemui.penguin.CosShadeSwitch
-import com.android.systemui.penguin.rememberCosFeature
-import com.android.systemui.qs.shared.style.LiquidGlassBrightness
-import com.android.systemui.qs.shared.style.LiquidGlassControl
-import com.android.systemui.qs.shared.style.LiquidGlassVolume
-import com.android.systemui.qs.shared.style.liquidGlassOn
 import com.android.compose.animation.scene.ContentScope
 import com.android.compose.animation.scene.ElementKey
 import com.android.compose.animation.scene.UserAction
@@ -122,9 +112,7 @@ import com.android.systemui.scene.shared.model.Overlays
 import com.android.systemui.scene.ui.composable.LocalSceneContainerPreloadedResources
 import com.android.systemui.scene.ui.composable.Overlay
 import com.android.systemui.shade.ui.composable.ChipHighlightModel
-import com.android.systemui.shade.ui.composable.CosTileTipHeader
 import com.android.systemui.shade.ui.composable.OverlayShade
-import com.android.systemui.shade.ui.composable.isLandscapeSplitShade
 import com.android.systemui.shade.ui.composable.OverlayShadeHeader
 import com.android.systemui.shade.ui.composable.QuickSettingsOverlayHeader
 import com.android.systemui.shade.ui.composable.QuickSettingsOverlayPrivacyChip
@@ -159,7 +147,7 @@ constructor(
 
     override val userActions: Flow<Map<UserAction, UserActionResult>> = actionsViewModel.actions
 
-    override val alwaysCompose: Boolean = true
+    override val alwaysCompose: Boolean = false
 
     override suspend fun activate(): Nothing {
         actionsViewModel.activate()
@@ -167,11 +155,6 @@ constructor(
 
     @Composable
     override fun ContentScope.Content(modifier: Modifier) {
-        val shown = isAlwaysComposedContentVisible()
-        val besideNotifications =
-            rememberCosFeature(CosFeature.Shade) &&
-                Overlays.NotificationsShade in layoutState.currentOverlays
-        if (!shown && !besideNotifications) return
         val coroutineScope = rememberCoroutineScope()
         val contentViewModel =
             rememberViewModel("QuickSettingsShadeOverlayContent", key = coroutineScope) {
@@ -213,18 +196,6 @@ constructor(
 
         LaunchedEffectWithLifecycle(key1 = Unit) { contentViewModel.detectShadeModeChanges() }
 
-        val cosSwitching by
-            remember(layoutState) {
-                derivedStateOf {
-                    (layoutState.currentTransition as? TransitionState.Transition)?.key ==
-                        CosShadeSwitch
-                }
-            }
-        var panelShape by remember { mutableStateOf<ShadeScrimShape?>(null) }
-        LaunchedEffect(cosSwitching, panelShape) {
-            contentViewModel.onPanelShapeInWindowChanged(panelShape.takeUnless { cosSwitching })
-        }
-
         Box(
             modifier =
                 modifier
@@ -239,10 +210,6 @@ constructor(
                     quickSettingsContainerViewModel.penguin?.wideOverlay(
                         quickSettingsContainerViewModel
                     ) == true,
-                cosPanel =
-                    quickSettingsContainerViewModel.penguin?.cosPanel(
-                        quickSettingsContainerViewModel
-                    ) == true,
                 statusBarHeightPx = contentViewModel.statusBarHeightPx,
                 enableTransparency = contentViewModel.isTransparencyEnabled,
                 onScrimClicked = {
@@ -252,12 +219,13 @@ constructor(
                 },
                 onBackgroundPlaced = { bounds, topCornerRadius, bottomCornerRadius ->
                     contentViewModel.onShadeOverlayBoundsChanged(bounds)
-                    panelShape =
+                    contentViewModel.onPanelShapeInWindowChanged(
                         ShadeScrimShape(
                             bounds = ShadeScrimBounds(bounds),
                             topRadius = topCornerRadius.roundToInt(),
                             bottomRadius = bottomCornerRadius.roundToInt(),
                         )
+                    )
                 },
                 header = {
                     val penguinStatusBar =
@@ -266,21 +234,13 @@ constructor(
                         ) != false
                     if (contentViewModel.showHeader && penguinStatusBar) {
                         val headerViewModel = quickSettingsContainerViewModel.shadeHeaderViewModel
-                        val header: @Composable (Modifier) -> Unit = { modifier ->
-                            OverlayShadeHeader(
-                                viewModel = headerViewModel,
-                                notificationsHighlight = headerViewModel.inactiveChipHighlight,
-                                quickSettingsHighlight = ChipHighlightModel.Strong,
-                                showClock = true,
-                                modifier = modifier,
-                            )
-                        }
-                        val element = Modifier.element(QuickSettingsShade.Elements.StatusBar)
-                        if (rememberCosFeature(CosFeature.QuickSettings)) {
-                            CosTileTipHeader(element) { header(Modifier) }
-                        } else {
-                            header(element)
-                        }
+                        OverlayShadeHeader(
+                            viewModel = headerViewModel,
+                            notificationsHighlight = headerViewModel.inactiveChipHighlight,
+                            quickSettingsHighlight = ChipHighlightModel.Strong,
+                            showClock = true,
+                            modifier = Modifier.element(QuickSettingsShade.Elements.StatusBar),
+                        )
                     }
                 },
             ) {
@@ -306,13 +266,11 @@ constructor(
                     )
                 }
             }
-            if (shown) {
-                SnoozableHeadsUpNotificationPlaceholder(
-                    tag = "QSShadeOverlay",
-                    stackScrollView = notificationStackScrollView.get(),
-                    viewModel = hunPlaceholderViewModel,
-                )
-            }
+            SnoozableHeadsUpNotificationPlaceholder(
+                tag = "QSShadeOverlay",
+                stackScrollView = notificationStackScrollView.get(),
+                viewModel = hunPlaceholderViewModel,
+            )
         }
     }
 }
@@ -412,11 +370,7 @@ private fun ContentScope.QuickSettingsContainer(
                     toolbarViewModelFactory = contentViewModel.toolbarViewModelFactory,
                     buildNumberViewModelFactory = contentViewModel.buildNumberViewModelFactory,
                     isTransparencyEnabled = contentViewModel.isTransparencyEnabled,
-                    volumeSliderViewModel = { contentViewModel.volumeSliderViewModel },
-                    isVolumeDetailsEnabled = contentViewModel.isVolumeDetailsEnabled,
-                    ringerMode = contentViewModel.ringerMode,
-                    supportsVibrateRinger = contentViewModel.supportsVibrateRinger,
-                    onRingerClick = contentViewModel::cycleRingerMode,
+                    volumeSliderViewModel = contentViewModel.volumeSliderViewModel,
                     audioDetailsViewModelFactory = contentViewModel.audioDetailsViewModelFactory,
                     modifier = modifier.sysuiResTag("quick_settings_panel"),
                 )
@@ -432,32 +386,19 @@ private fun ContentScope.QuickSettingsLayout(
     toolbarViewModelFactory: ToolbarViewModel.Factory,
     buildNumberViewModelFactory: BuildNumberViewModel.Factory,
     isTransparencyEnabled: Boolean,
-    volumeSliderViewModel: () -> AudioStreamSliderViewModel?,
-    isVolumeDetailsEnabled: Boolean,
-    ringerMode: Int,
-    supportsVibrateRinger: Boolean,
-    onRingerClick: () -> Unit,
+    volumeSliderViewModel: AudioStreamSliderViewModel?,
     audioDetailsViewModelFactory: AudioDetailsViewModel.Factory,
     modifier: Modifier = Modifier,
 ) {
-    val stockOverlay = qsContainerViewModel.penguin?.stockOverlay(qsContainerViewModel) == true
-    val scrollsWhole =
-        qsContainerViewModel.penguin != null && !stockOverlay && isLandscapeSplitShade()
-    val wholeScroll = rememberScrollState()
     Column(
         horizontalAlignment = Alignment.CenterHorizontally,
-        modifier =
-            modifier
-                .thenIf(scrollsWhole) { Modifier.verticalScroll(wholeScroll) }
-                .padding(horizontal = QuickSettingsShade.Dimensions.HorizontalPadding),
+        modifier = modifier.padding(horizontal = QuickSettingsShade.Dimensions.HorizontalPadding),
     ) {
         val toolbarViewModel =
             rememberViewModel("QuickSettingsLayout") { toolbarViewModelFactory.create() }
         val penguinTop =
-            !stockOverlay &&
-                qsContainerViewModel.penguin?.run {
-                    OverlayTop(qsContainerViewModel, toolbarViewModel)
-                } == true
+            qsContainerViewModel.penguin?.run { OverlayTop(qsContainerViewModel, toolbarViewModel) } ==
+                true
         if (!penguinTop && LocalSceneContainerPreloadedResources.current.isFullWidthShade) {
             QuickSettingsOverlayPrivacyChip(qsContainerViewModel.shadeHeaderViewModel)
             VerticalSeparator(QuickSettingsShade.Dimensions.ShortPadding)
@@ -488,17 +429,12 @@ private fun ContentScope.QuickSettingsLayout(
             VerticalSeparator(QuickSettingsShade.Dimensions.ToolbarBottomPadding)
         }
 
-        val penguin = qsContainerViewModel.penguin.takeUnless { stockOverlay }
+        val penguin = qsContainerViewModel.penguin
         if (penguin != null) {
             with(penguin) {
                 OverlayBody(qsContainerViewModel) { OverlayBuildNumber(buildNumberViewModelFactory) }
             }
         } else {
-            // The stock style always has the media volume slider; it has no audio details to open
-            // unless that feature is on. With Liquid Glass the sliders take its two-tone look.
-            val volumeSliderViewModel =
-                if (stockOverlay || isVolumeDetailsEnabled) volumeSliderViewModel() else null
-            val glass = stockOverlay && liquidGlassOn
             Column(modifier = Modifier.fillMaxWidth().verticalScroll(rememberScrollState())) {
                 Media(
                     viewModelFactory = qsContainerViewModel.mediaViewModelFactory,
@@ -529,7 +465,6 @@ private fun ContentScope.QuickSettingsLayout(
                                 ),
                             modifier = Modifier.fillMaxWidth(),
                             dimensions = QuickSettingsShade.Dimensions.brightnessSliderDimensions,
-                            glassAccent = if (glass) LiquidGlassBrightness else null,
                         )
                     }
                 }
@@ -558,110 +493,33 @@ private fun ContentScope.QuickSettingsLayout(
                                     volumeSliderViewModel.onValueChangeFinished()
                                 },
                                 onIconTapped = { volumeSliderViewModel.toggleMuted(volumeSliderState) },
-                                sliderColors =
-                                    PlatformSliderDefaults.defaultPlatformSliderColors().let {
-                                        if (!glass) it
-                                        else
-                                            it.copy(
-                                                trackColor = LiquidGlassControl,
-                                                indicatorColor = Color.White,
-                                                iconColor = LiquidGlassVolume,
-                                                labelColorOnIndicator = LiquidGlassVolume,
-                                                labelColorOnTrack = Color.White,
-                                            )
-                                    },
-                                materialSliderColors =
-                                    if (!glass) SystemUISliderColors.Defaults
-                                    else
-                                        SystemUISliderColors.Defaults.copy(
-                                            thumbColor = Color.White,
-                                            activeTrackColor = Color.White,
-                                            inactiveTrackColor = LiquidGlassControl,
-                                            activeTickColor = LiquidGlassVolume,
-                                            inactiveTickColor = Color.White,
-                                        ),
+                                sliderColors = PlatformSliderDefaults.defaultPlatformSliderColors(),
                                 hapticsViewModelFactory =
                                     volumeSliderViewModel.getSliderHapticsViewModelFactory(),
                                 dimensions = QuickSettingsShade.Dimensions.VolumeSliderDimensions,
                             )
-                            if (isVolumeDetailsEnabled) {
-                                Spacer(Modifier.width(8.dp))
-                                IconButton(
-                                    modifier =
-                                        Modifier.size(
-                                            QuickSettingsShade.Dimensions.VolumeSliderDimensions.trackHeight
-                                        ),
-                                    colors =
-                                        IconButtonDefaults.iconButtonColors(
-                                            containerColor = MaterialTheme.colorScheme.primary,
-                                            contentColor = MaterialTheme.colorScheme.onPrimary,
-                                        ),
-                                    onClick = {
-                                        qsContainerViewModel.detailsViewModel.onVolumeSettingsButtonClicked(
-                                            audioDetailsViewModelFactory.create()
-                                        )
-                                    },
-                                ) {
-                                    Icon(
-                                        painterResource(R.drawable.ic_more_vert),
-                                        // TODO(b/378513663): Update the placeholder content description
-                                        contentDescription = "Volume settings",
+                            Spacer(Modifier.width(8.dp))
+                            IconButton(
+                                modifier =
+                                    Modifier.size(
+                                        QuickSettingsShade.Dimensions.VolumeSliderDimensions.trackHeight
+                                    ),
+                                colors =
+                                    IconButtonDefaults.iconButtonColors(
+                                        containerColor = MaterialTheme.colorScheme.primary,
+                                        contentColor = MaterialTheme.colorScheme.onPrimary,
+                                    ),
+                                onClick = {
+                                    qsContainerViewModel.detailsViewModel.onVolumeSettingsButtonClicked(
+                                        audioDetailsViewModelFactory.create()
                                     )
-                                }
-                            } else {
-                                // Without the audio details page, the round button next to the
-                                // slider is the ringer: ring, vibrate (where supported) or mute,
-                                // as the auto brightness button sits next to the brightness slider.
-                                val silenced = ringerMode != AudioManager.RINGER_MODE_NORMAL
-                                Spacer(Modifier.width(8.dp))
-                                IconButton(
-                                    modifier =
-                                        Modifier.size(
-                                            QuickSettingsShade.Dimensions.VolumeSliderDimensions.trackHeight
-                                        ),
-                                    colors =
-                                        IconButtonDefaults.iconButtonColors(
-                                            containerColor =
-                                                when {
-                                                    glass && silenced -> Color.White
-                                                    glass -> LiquidGlassControl
-                                                    silenced -> MaterialTheme.colorScheme.primary
-                                                    else ->
-                                                        MaterialTheme.colorScheme
-                                                            .surfaceContainerHighest
-                                                },
-                                            contentColor =
-                                                when {
-                                                    glass && silenced -> LiquidGlassVolume
-                                                    glass -> Color.White
-                                                    silenced -> MaterialTheme.colorScheme.onPrimary
-                                                    else -> MaterialTheme.colorScheme.onSurface
-                                                },
-                                        ),
-                                    onClick = onRingerClick,
-                                ) {
-                                    Icon(
-                                        painterResource(
-                                            when (ringerMode) {
-                                                AudioManager.RINGER_MODE_VIBRATE ->
-                                                    R.drawable.ic_volume_ringer_vibrate
-                                                AudioManager.RINGER_MODE_SILENT ->
-                                                    R.drawable.ic_volume_ringer_mute
-                                                else -> R.drawable.ic_volume_ringer
-                                            }
-                                        ),
-                                        contentDescription =
-                                            stringResource(
-                                                when (ringerMode) {
-                                                    AudioManager.RINGER_MODE_VIBRATE ->
-                                                        R.string.volume_ringer_status_vibrate
-                                                    AudioManager.RINGER_MODE_SILENT ->
-                                                        R.string.volume_ringer_status_silent
-                                                    else -> R.string.volume_ringer_status_normal
-                                                }
-                                            ),
-                                    )
-                                }
+                                },
+                            ) {
+                                Icon(
+                                    painterResource(R.drawable.ic_more_vert),
+                                    // TODO(b/378513663): Update the placeholder content description
+                                    contentDescription = "Volume settings",
+                                )
                             }
                         }
                     }

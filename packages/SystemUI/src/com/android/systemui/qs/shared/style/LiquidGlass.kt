@@ -4,6 +4,9 @@
  */
 
 package com.android.systemui.qs.shared.style
+import androidx.compose.ui.layout.positionInWindow
+import androidx.compose.ui.layout.onGloballyPositioned
+import androidx.compose.ui.layout.boundsInWindow
 
 import android.content.Context
 import android.content.res.Resources
@@ -55,6 +58,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.toSize
+import com.android.systemui.common.ui.view.BackgroundBlurCompat
 import com.android.internal.graphics.drawable.BackgroundBlurDrawable
 import com.android.systemui.common.shared.model.Icon
 import com.android.systemui.res.R
@@ -697,7 +701,7 @@ fun Modifier.glassBlurRegion(shape: Shape, material: Int = 0): Modifier {
                     else -> 0f
                 }
             blur.setVisible(true, false)
-            blur.setMaterial(material)
+            BackgroundBlurCompat.setMaterial(blur, material)
             blur.setColor(0)
             blur.setBlurRadius(radius)
             blur.setCornerRadius(minOf(corner, shown.height / 2f))

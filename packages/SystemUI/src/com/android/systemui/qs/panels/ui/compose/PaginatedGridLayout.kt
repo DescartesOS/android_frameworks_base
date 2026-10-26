@@ -69,24 +69,25 @@ constructor(
     @PaginatedBaseLayoutType private val delegateGridLayout: PaginatableGridLayout,
 ) : GridLayout by delegateGridLayout {
     @Composable
-    override fun ContentScope.TileGrid(
+        override fun ContentScope.TileGrid(
         tiles: List<TileViewModel>,
         modifier: Modifier,
-        columnsOverride: Int?,
-        forceLargeTiles: Boolean,
         listening: () -> Boolean,
         enableRevealEffect: Boolean,
         belowTiles: @Composable () -> Unit,
+        columnsOverride: Int?,
+        forceLargeTiles: Boolean,
     ) {
         if (columnsOverride != null || forceLargeTiles) {
             with(delegateGridLayout) {
                 TileGrid(
                     tiles = tiles,
                     modifier = modifier,
-                    columnsOverride = columnsOverride,
-                    forceLargeTiles = forceLargeTiles,
                     listening = listening,
                     enableRevealEffect = enableRevealEffect,
+                    belowTiles = belowTiles,
+                    columnsOverride = columnsOverride,
+                    forceLargeTiles = forceLargeTiles,
                 )
             }
             return

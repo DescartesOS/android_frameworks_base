@@ -41,12 +41,12 @@ interface GridLayout {
         listening: () -> Boolean,
         enableRevealEffect: Boolean,
         belowTiles: @Composable () -> Unit = {},
+        columnsOverride: Int? = null,
+        forceLargeTiles: Boolean = false,
     )
 
     @Composable
-    fun TileSizing(
-        content: @Composable (largeTiles: Set<TileSpec>, resize: (TileSpec, Boolean) -> Unit) -> Unit
-    ) {
+    fun TileSizing(content: @Composable (Set<TileSpec>, (TileSpec, Boolean) -> Unit) -> Unit) {
         content(emptySet()) { _, _ -> }
     }
 

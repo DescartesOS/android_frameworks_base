@@ -77,6 +77,8 @@ public interface NotificationShadeWindowController extends RemoteInputController
     /** Sets the state of whether the keyguard is currently needs input or not. */
     default void setKeyguardNeedsInput(boolean needsInput) {}
 
+    default void setShadeNeedsInput(boolean needsInput) {}
+
     /** Sets the state of whether the notification shade panel is currently visible or not. */
     default void setPanelVisible(boolean visible) {}
 
@@ -84,7 +86,6 @@ public interface NotificationShadeWindowController extends RemoteInputController
     default void setNotificationShadeFocusable(boolean focusable) {}
 
     /** Lets the focusable shade window host an IME, e.g. for the Control Centre editor search. */
-    default void setShadeNeedsInput(boolean needsInput) {}
 
     /** Sets the state of whether the bouncer is showing or not. */
     default void setBouncerShowing(boolean showing) {}

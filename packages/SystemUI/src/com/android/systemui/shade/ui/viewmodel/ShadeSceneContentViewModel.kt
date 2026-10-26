@@ -41,6 +41,7 @@ import com.android.systemui.scene.shared.model.Overlays
 import com.android.systemui.scene.shared.model.SceneFamilies
 import com.android.systemui.media.remedia.domain.interactor.MediaInteractor
 import com.android.systemui.scene.shared.model.Scenes
+import com.android.systemui.shade.domain.interactor.ShadeInteractor
 import com.android.systemui.shade.domain.interactor.ShadeModeInteractor
 import com.android.systemui.shade.domain.interactor.ShadeStatusBarComponentsInteractor
 import com.android.systemui.shade.shared.model.ShadeMode
@@ -82,7 +83,17 @@ constructor(
     windowRootViewBlurInteractor: WindowRootViewBlurInteractor,
     mediaInRowInLandscapeViewModelFactory: MediaInRowInLandscapeViewModel.Factory,
     shadeStatusBarComponentsInteractor: ShadeStatusBarComponentsInteractor,
+    private val shadeInteractor: ShadeInteractor,
 ) : HydratedActivatable() {
+
+    val qsContainerViewModel = qsContainerViewModelFactory.create(supportsBrightnessMirroring = false)
+
+    val hasMediaCards: Boolean
+        get() = qsContainerViewModel.hasMediaCards
+
+    fun expandQuickSettings(loggingReason: String) {
+        shadeInteractor.expandQuickSettingsShade(loggingReason, null)
+    }
 
     /**
      * Whether the shade container transparency effect should be enabled (`true`), or whether to
@@ -113,12 +124,6 @@ constructor(
         // mediaCarouselInteractor.hasAnyMedia if in SplitShade.
         mediaCarouselInteractor.hasActiveMedia.hydratedStateOf()
 
-    val hasMediaCards: Boolean
-        get() = mediaInteractor.hasAnyMedia
-
-    fun expandQuickSettings(loggingReason: String) {
-        sceneInteractor.changeScene(Scenes.QuickSettings, loggingReason)
-    }
 
     val isQsEnabled: Boolean by
         shadeStatusBarComponentsInteractor.disableFlags
@@ -145,7 +150,10 @@ constructor(
         mediaInRowInLandscapeViewModelFactory.create(LOCATION_QQS, qqsMediaUiBehavior)
 
     override suspend fun onActivated() {
-        coroutineScope { launch { qqsMediaInRowViewModel.activate() } }
+        coroutineScope {
+            launch { qqsMediaInRowViewModel.activate() }
+            launch { qsContainerViewModel.activate() }
+        }
     }
 
     /**

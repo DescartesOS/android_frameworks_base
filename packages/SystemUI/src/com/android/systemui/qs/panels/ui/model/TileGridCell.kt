@@ -49,8 +49,8 @@ data class TileGridCell(
         sizedTile: SizedTile<EditTileViewModel>,
         row: Int,
         column: Int,
-        rows: Int = 1,
         hoistedBefore: Boolean = false,
+        rows: Int = 1,
     ) : this(
         tile = sizedTile.tile,
         row = row,

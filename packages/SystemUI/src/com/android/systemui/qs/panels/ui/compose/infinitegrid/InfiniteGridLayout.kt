@@ -16,6 +16,8 @@
 
 package com.android.systemui.qs.panels.ui.compose.infinitegrid
 
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.wrapContentWidth
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -36,6 +38,7 @@ import com.android.systemui.dagger.SysUISingleton
 import com.android.systemui.grid.ui.compose.VerticalSpannedGrid
 import com.android.systemui.haptics.msdl.qs.TileHapticsViewModel
 import com.android.systemui.lifecycle.rememberViewModel
+import com.android.systemui.penguin.LocalQsPanels
 import com.android.systemui.qs.panels.shared.model.SizedTileImpl
 import com.android.systemui.qs.panels.ui.compose.EditTileListState
 import android.provider.Settings
@@ -67,6 +70,7 @@ import androidx.compose.ui.unit.dp
 import com.android.systemui.development.ui.compose.BuildNumber
 import com.android.systemui.development.ui.viewmodel.BuildNumberViewModel
 
+
 @SysUISingleton
 class InfiniteGridLayout
 @Inject
@@ -80,14 +84,14 @@ constructor(
 ) : PaginatableGridLayout {
 
     @Composable
-    override fun ContentScope.TileGrid(
+        override fun ContentScope.TileGrid(
         tiles: List<TileViewModel>,
         modifier: Modifier,
-        columnsOverride: Int?,
-        forceLargeTiles: Boolean,
         listening: () -> Boolean,
         enableRevealEffect: Boolean,
         belowTiles: @Composable () -> Unit,
+        columnsOverride: Int?,
+        forceLargeTiles: Boolean,
     ) {
         val viewModel =
             rememberViewModel(traceName = "InfiniteGridLayout.TileGrid") {
@@ -103,6 +107,11 @@ constructor(
         val columns = columnsOverride ?: viewModel.columnsWithMediaViewModel.columns
         val largeTilesSpan = viewModel.columnsWithMediaViewModel.largeSpan
         val largeTiles by viewModel.iconTilesViewModel.largeTilesState
+        val panelTileStyle = LocalQsPanels.current?.panels?.tileStyle()
+        val roundIconTiles =
+            panelTileStyle?.roundIconTiles == true &&
+                !forceLargeTiles &&
+                (columnsOverride == null || columnsOverride == 1)
         // Tiles or largeTiles may be updated while this is composed, so listen to any changes
         val roundGrid =
             LocalQsPanels.current?.panels?.tileStyle()?.roundIconTiles == true &&
@@ -115,12 +124,15 @@ constructor(
                         it,
                         if (forceLargeTiles) largeTilesSpan.coerceAtMost(columns)
                         else if (roundGrid) 1
-                        else if (largeTiles.contains(it.spec)) largeTilesSpan
+                        else if (largeTiles.contains(it.spec)) largeTilesSpan.coerceAtMost(columns)
                         else 1
                     )
                 }
             }
-        val squishiness by viewModel.squishinessViewModel.squishiness.collectAsStateWithLifecycle()
+        val squishinessState =
+            viewModel.squishinessViewModel.squishiness.collectAsStateWithLifecycle()
+        val applySquish = columnsOverride == null && !forceLargeTiles
+        val squishiness = if (applySquish) squishinessState.value else 1f
         val scope = rememberCoroutineScope()
 
         val bounceables =
@@ -149,7 +161,7 @@ constructor(
                         tile = it.tile,
                         iconOnly =
                             if (forceLargeTiles) false
-                            else roundGrid || iconTilesViewModel.isIconTile(it.tile.spec),
+                            else columnsOverride == 1 || roundGrid || iconTilesViewModel.isIconTile(it.tile.spec),
                         squishiness = tileSquishiness,
                         isHeaderTile = !isMainGrid,
                         tileHapticsViewModelFactory = tileHapticsViewModelFactory,

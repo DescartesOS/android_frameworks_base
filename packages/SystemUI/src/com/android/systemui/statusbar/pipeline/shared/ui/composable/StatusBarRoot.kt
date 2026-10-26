@@ -15,6 +15,9 @@
  */
 
 package com.android.systemui.statusbar.pipeline.shared.ui.composable
+import com.android.keyguard.AlphaOptimizedLinearLayout
+import com.android.systemui.scene.shared.flag.SceneContainerFlag
+import androidx.compose.ui.platform.ViewCompositionStrategy
 
 import android.animation.Animator
 import android.animation.AnimatorListenerAdapter

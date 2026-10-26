@@ -90,15 +90,6 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.drop
 import kotlinx.coroutines.launch
-import android.widget.FrameLayout
-import androidx.compose.foundation.layout.width
-import androidx.compose.ui.res.dimensionResource
-import com.android.systemui.media.remedia.shared.flag.MediaControlsInComposeFlag
-import com.android.systemui.media.remedia.ui.compose.Media
-import com.android.systemui.media.remedia.ui.compose.MediaPresentationStyle
-import com.android.systemui.media.remedia.ui.compose.MediaUiBehavior
-import com.android.systemui.media.remedia.ui.viewmodel.MediaCarouselVisibility
-import com.android.systemui.statusbar.quickactions.media.ui.viewmodel.MediaControlPopupViewModel
 
 private val PopupShape = RoundedCornerShape(34.dp)
 private val ArtworkShape = RoundedCornerShape(24.dp)
@@ -603,58 +594,5 @@ private fun Modifier.squishAnimation(toggleCount: Int): Modifier {
     return this.graphicsLayer {
         this.scaleX = scaleX.value
         this.scaleY = scaleY.value
-    }
-}
-
-/** Displays a popup containing media controls. Embeds the MediaCarousel within a Compose popup. */
-@Composable
-fun MediaControlPopup(viewModel: MediaControlPopupViewModel, modifier: Modifier = Modifier) {
-    if (MediaControlsInComposeFlag.isEnabled) {
-        Media(
-            viewModelFactory = viewModel.mediaViewModelFactory,
-            presentationStyle = MediaPresentationStyle.Default,
-            behavior =
-                MediaUiBehavior(
-                    carouselVisibility = MediaCarouselVisibility.WhenAnyCardIsActive,
-                    isCarouselDismissible = false,
-                    isCarouselScrollingEnabled = false,
-                ),
-            onDismissed = {},
-            modifier =
-                modifier
-                    .width(400.dp)
-                    .height(200.dp)
-                    .clip(
-                        shape =
-                            RoundedCornerShape(
-                                dimensionResource(R.dimen.notification_corner_radius)
-                            )
-                    ),
-            location = Media.Location.STATUS_BAR_POPUP,
-        )
-    } else {
-        AndroidView(
-            modifier =
-                modifier
-                    .width(400.dp)
-                    .height(200.dp)
-                    .clip(
-                        shape =
-                            RoundedCornerShape(
-                                dimensionResource(R.dimen.notification_corner_radius)
-                            )
-                    ),
-            factory = { _ ->
-                viewModel.mediaHost.hostView.apply {
-                    layoutParams =
-                        FrameLayout.LayoutParams(
-                            FrameLayout.LayoutParams.MATCH_PARENT,
-                            FrameLayout.LayoutParams.MATCH_PARENT,
-                        )
-                }
-                viewModel.mediaHost.hostView
-            },
-            onReset = {},
-        )
     }
 }

@@ -69,7 +69,7 @@ class BackgroundBlurAlphaSync(
         val cos = CosFeatures.state(view.context, CosFeature.LockscreenGlass).value
         if (material != (if (cos) 1 else 0)) {
             material = if (cos) 1 else 0
-            blur.setMaterial(material)
+            BackgroundBlurCompat.setMaterial(blur, material)
         }
         publish(cos && blur.isVisible && view.isShown, alpha)
     }
@@ -117,6 +117,24 @@ class BackgroundBlurAlphaSync(
             (if (observer.isAlive) observer else view.viewTreeObserver)
                 .removeOnPreDrawListener(this)
             GlassBackdrop.update(this, null)
+        }
+    }
+}
+
+
+// Supports SystemUI updates on frameworks without blur materials.
+object BackgroundBlurCompat {
+    @Volatile private var materialSupported = true
+
+    @JvmStatic
+    fun setMaterial(drawable: BackgroundBlurDrawable, material: Int): Boolean {
+        if (!materialSupported) return false
+        return try {
+            drawable.setMaterial(material)
+            true
+        } catch (_: NoSuchMethodError) {
+            materialSupported = false
+            false
         }
     }
 }
