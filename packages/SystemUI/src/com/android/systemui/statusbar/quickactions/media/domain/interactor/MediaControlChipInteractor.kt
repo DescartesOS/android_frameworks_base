@@ -174,7 +174,7 @@ constructor(
     val mediaUseWaveform: StateFlow<Boolean> =
         DynamicIslandFeatureSettings.observeDynamicIslandFeatureEnabled(
             context,
-            Settings.System.MEDIA_WAVEFORM_SEEKBAR,
+            "media_waveform_seekbar",
             false,
         ).stateIn(backgroundScope, SharingStarted.WhileSubscribed(), false)
 

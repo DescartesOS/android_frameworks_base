@@ -2311,4 +2311,5 @@
     <dimen name="usb_device_dialog_button_background_radius_full">360dp</dimen>
     <!-- Usb Device Dialog values end -->
 
+    <dimen name="custom_qs_tile_start_padding">0dp</dimen>
 </resources>
