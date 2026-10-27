@@ -59,6 +59,7 @@ import com.android.systemui.statusbar.chips.ui.viewmodel.OngoingActivityChipsRef
 import com.android.systemui.statusbar.gesture.GesturePointerEventListener
 import com.android.systemui.statusbar.notification.InstantAppNotifier
 import com.android.systemui.statusbar.notification.headsup.StatusBarHeadsUpChangeListener
+import com.android.systemui.statusbar.quickactions.media.MediaControlChipStartable
 import com.android.systemui.stylus.StylusUsiPowerStartable
 import com.android.systemui.temporarydisplay.chipbar.ChipbarCoordinator
 import com.android.systemui.usb.StorageNotification
@@ -358,6 +359,11 @@ abstract class SystemUICoreStartableModule {
     @IntoMap
     @ClassKey(AxPlatformServiceImpl::class)
     abstract fun bindAxPlatformService(impl: AxPlatformServiceImpl): CoreStartable
+
+    @Binds
+    @IntoMap
+    @ClassKey(MediaControlChipStartable::class)
+    abstract fun bindMediaControlChipStartable(impl: MediaControlChipStartable): CoreStartable
 
     /** Inject into KeyguardSmartspaceStartable. */
     @Binds

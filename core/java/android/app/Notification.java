@@ -798,6 +798,112 @@ public class Notification implements Parcelable
      */
     public static final int FLAG_COMPUTER_CONTROL = 0x00080000;
 
+    // Samsung ongoing activity wire format, reconstructed from S741BXXS2AZI5.
+    /** @hide */
+    public static final String EXTRA_ONGOING_ACTIVITY_ACTION_BG_COLOR = "android.ongoingActivityActionBgColors";
+    /** @hide */
+    public static final String EXTRA_ONGOING_ACTIVITY_BADGE = "android.ongoingActivityBadge";
+    /** @hide */
+    public static final String EXTRA_ONGOING_ACTIVITY_CARD_BACKGROUND = "android.ongoingActivityCardBackground";
+    /** @hide */
+    public static final String EXTRA_ONGOING_ACTIVITY_CARD_ICON = "android.ongoingActivityCardIcon";
+    /** @hide */
+    public static final String EXTRA_ONGOING_ACTIVITY_CHIP_BACKGROUND = "android.ongoingActivityChipBackground";
+    /** @hide */
+    public static final String EXTRA_ONGOING_ACTIVITY_CHIP_ICON = "android.ongoingActivityChipIcon";
+    /** @hide */
+    public static final String EXTRA_ONGOING_ACTIVITY_CHRONOMETER_BASE = "android.ongoingActivityChronometerBase";
+    /** @hide */
+    public static final String EXTRA_ONGOING_ACTIVITY_CHRONOMETER_COUNTDOWN = "android.ongoingActivityChronometerCountdown";
+    /** @hide */
+    public static final String EXTRA_ONGOING_ACTIVITY_CHRONOMETER_FORMAT = "android.ongoingActivityChronometerFormat";
+    /** @hide */
+    public static final String EXTRA_ONGOING_ACTIVITY_CHRONOMETER_SPEED = "android.ongoingActivityChronometerSpeed";
+    /** @hide */
+    public static final String EXTRA_ONGOING_ACTIVITY_CHRONOMETER_START = "android.ongoingActivityChronometerStart";
+    /** @hide */
+    public static final String EXTRA_ONGOING_ACTIVITY_CUSTOM_CARD_VIEW_CENTER_UI = "android.ongoingActivityCustomCardViewCenterUI";
+    /** @hide */
+    public static final String EXTRA_ONGOING_ACTIVITY_CUSTOM_EXPANDED_CARD_VIEW = "android.ongoingActivityCustomExpandedCardView";
+    /** @hide */
+    public static final String EXTRA_ONGOING_ACTIVITY_EXPANDED_CHIP_TEXT = "android.ongoingActivityExpandedChipText";
+    /** @hide */
+    public static final String EXTRA_ONGOING_ACTIVITY_EXPANDED_CHIP_VIEW = "android.ongoingActivityExpandedChipView";
+    /** @hide */
+    public static final String EXTRA_ONGOING_ACTIVITY_EXPANDED_NOW_BAR_VIEW = "android.ongoingActivityExpandedNowBarView";
+    /** @hide */
+    public static final String EXTRA_ONGOING_ACTIVITY_MORE_INFO = "android.ongoingActivityMoreInfo";
+    /** @hide */
+    public static final String EXTRA_ONGOING_ACTIVITY_NOTI_ACTION_BG_COLOR = "android.ongoingActivityNoti.actionBgColor";
+    /** @hide */
+    public static final String EXTRA_ONGOING_ACTIVITY_NOTI_ACTION_PRIMARY_SET = "android.ongoingActivityNoti.actionPrimarySet";
+    /** @hide */
+    public static final String EXTRA_ONGOING_ACTIVITY_NOTI_ACTION_TYPE = "android.ongoingActivityNoti.actionType";
+    /** @hide */
+    public static final String EXTRA_ONGOING_ACTIVITY_NOTI_BG_COLOR = "android.ongoingActivityNoti.bgColor";
+    /** @hide */
+    public static final String EXTRA_ONGOING_ACTIVITY_NOTI_CHIP_BG_COLOR = "android.ongoingActivityNoti.chipBgColor";
+    /** @hide */
+    public static final String EXTRA_ONGOING_ACTIVITY_NOTI_CHIP_EXPANDED_TEXT = "android.ongoingActivityNoti.chipExpandedText";
+    /** @hide */
+    public static final String EXTRA_ONGOING_ACTIVITY_NOTI_CHIP_EXPANDED_VIEW = "android.ongoingActivityNoti.chipExpandedView";
+    /** @hide */
+    public static final String EXTRA_ONGOING_ACTIVITY_NOTI_CHIP_ICON = "android.ongoingActivityNoti.chipIcon";
+    /** @hide */
+    public static final String EXTRA_ONGOING_ACTIVITY_NOTI_CHRONOMETER_REMOTEVIEW = "android.ongoingActivityNoti.chronometerRemoteView";
+    /** @hide */
+    public static final String EXTRA_ONGOING_ACTIVITY_NOTI_CHRONOMETER_REMOTEVIEW_POSITION = "android.ongoingActivityNoti.chronometerRemoteViewPosition";
+    /** @hide */
+    public static final String EXTRA_ONGOING_ACTIVITY_NOTI_CHRONOMETER_REMOTEVIEW_TAG = "android.ongoingActivityNoti.chronometerRemoteViewTag";
+    /** @hide */
+    public static final String EXTRA_ONGOING_ACTIVITY_NOTI_EXPANDED_REMOTEVIEW = "android.ongoingActivityNoti.expandedRemoteView";
+    /** @hide */
+    public static final String EXTRA_ONGOING_ACTIVITY_NOTI_FIRST_ICON = "android.ongoingActivityNoti.firstIcon";
+    /** @hide */
+    public static final String EXTRA_ONGOING_ACTIVITY_NOTI_NOWBAR_HAS_FULLSCREEN_CARD = "android.ongoingActivityNoti.nowBarHasFullscreenCard";
+    /** @hide */
+    public static final String EXTRA_ONGOING_ACTIVITY_NOTI_NOWBAR_ICON = "android.ongoingActivityNoti.nowbarIcon";
+    /** @hide */
+    public static final String EXTRA_ONGOING_ACTIVITY_NOTI_NOWBAR_PRIMARY_INFO = "android.ongoingActivityNoti.nowbarPrimaryInfo";
+    /** @hide */
+    public static final String EXTRA_ONGOING_ACTIVITY_NOTI_NOWBAR_REMOTEVIEW = "android.ongoingActivityNoti.nowbarRemoteView";
+    /** @hide */
+    public static final String EXTRA_ONGOING_ACTIVITY_NOTI_NOWBAR_SECONDARY_INFO = "android.ongoingActivityNoti.nowbarSecondaryInfo";
+    /** @hide */
+    public static final String EXTRA_ONGOING_ACTIVITY_NOTI_PRIMARY_INFO = "android.ongoingActivityNoti.primaryInfo";
+    /** @hide */
+    public static final String EXTRA_ONGOING_ACTIVITY_NOTI_PROGRESS = "android.ongoingActivityNoti.progress";
+    /** @hide */
+    public static final String EXTRA_ONGOING_ACTIVITY_NOTI_PROGRESS_INDETERMINATE = "android.ongoingActivityNoti.progressIndeterminate";
+    /** @hide */
+    public static final String EXTRA_ONGOING_ACTIVITY_NOTI_PROGRESS_MAX = "android.ongoingActivityNoti.progressMax";
+    /** @hide */
+    public static final String EXTRA_ONGOING_ACTIVITY_NOTI_PROGRESS_SEGMENTS = "android.ongoingActivityNoti.progressSegments";
+    /** @hide */
+    public static final String EXTRA_ONGOING_ACTIVITY_NOTI_PROGRESS_SEGMENT_INNER_COLOR = "android.ongoingActivityNoti.progressSegments.segmentColor";
+    /** @hide */
+    public static final String EXTRA_ONGOING_ACTIVITY_NOTI_PROGRESS_SEGMENT_INNER_ICON = "android.ongoingActivityNoti.progressSegments.icon";
+    /** @hide */
+    public static final String EXTRA_ONGOING_ACTIVITY_NOTI_PROGRESS_SEGMENT_INNER_START = "android.ongoingActivityNoti.progressSegments.segmentStart";
+    /** @hide */
+    public static final String EXTRA_ONGOING_ACTIVITY_NOTI_SECONDARY_INFO = "android.ongoingActivityNoti.secondaryInfo";
+    /** @hide */
+    public static final String EXTRA_ONGOING_ACTIVITY_NOTI_SECOND_ICON = "android.ongoingActivityNoti.secondIcon";
+    /** @hide */
+    public static final String EXTRA_ONGOING_ACTIVITY_NOTI_STATE = "android.ongoingActivityNoti.state";
+    /** @hide */
+    public static final String EXTRA_ONGOING_ACTIVITY_NOTI_STYLE = "android.ongoingActivityNoti.style";
+    /** @hide */
+    public static final String EXTRA_ONGOING_ACTIVITY_NOTI_TERTIARY_INFO = "android.ongoingActivityNoti.tertiaryInfo";
+    /** @hide */
+    public static final String EXTRA_ONGOING_ACTIVITY_NOW_BAR_EXPANDABLE_TYPE = "android.ongoingActivityNowBarExpandableType";
+    /** @hide */
+    public static final String EXTRA_ONGOING_ACTIVITY_PRIMARY_ACTION = "android.ongoingActivityPrimaryAction";
+    /** @hide */
+    public static final String EXTRA_ONGOING_ACTIVITY_PRIMARY_INFO = "android.ongoingActivityPrimaryInfo";
+    /** @hide */
+    public static final String EXTRA_ONGOING_ACTIVITY_SECONDARY_INFO = "android.ongoingActivitySecondaryInfo";
+
     private static final Set<Class<? extends Style>> PLATFORM_STYLE_CLASSES = Set.of(
             BigTextStyle.class,
             BigPictureStyle.class,
@@ -807,7 +913,8 @@ public class Notification implements Parcelable
             DecoratedMediaCustomViewStyle.class,
             MessagingStyle.class,
             ProgressStyle.class,
-            CallStyle.class
+            CallStyle.class,
+            OngoingActivityStyle.class
     );
 
     private static boolean isPlatformStyle(Style style) {
@@ -3445,6 +3552,29 @@ public class Notification implements Parcelable
         }
 
         if (extras != null) {
+
+            // Ongoing activity surfaces can display app-provided URI icons and views.
+            visitIconUri(visitor, extras.getParcelable(EXTRA_ONGOING_ACTIVITY_CHIP_ICON, Icon.class));
+            visitIconUri(visitor, extras.getParcelable(EXTRA_ONGOING_ACTIVITY_CARD_ICON, Icon.class));
+            visitIconUri(visitor, extras.getParcelable(EXTRA_ONGOING_ACTIVITY_BADGE, Icon.class));
+            visitIconUri(visitor, extras.getParcelable(EXTRA_ONGOING_ACTIVITY_NOTI_CHIP_ICON, Icon.class));
+            visitIconUri(visitor, extras.getParcelable(EXTRA_ONGOING_ACTIVITY_NOTI_FIRST_ICON, Icon.class));
+            visitIconUri(visitor, extras.getParcelable(EXTRA_ONGOING_ACTIVITY_NOTI_SECOND_ICON, Icon.class));
+            visitIconUri(visitor, extras.getParcelable(EXTRA_ONGOING_ACTIVITY_NOTI_NOWBAR_ICON, Icon.class));
+            for (String key : new String[] {
+                    EXTRA_ONGOING_ACTIVITY_EXPANDED_CHIP_VIEW,
+                    EXTRA_ONGOING_ACTIVITY_CUSTOM_CARD_VIEW_CENTER_UI,
+                    EXTRA_ONGOING_ACTIVITY_CUSTOM_EXPANDED_CARD_VIEW,
+                    EXTRA_ONGOING_ACTIVITY_EXPANDED_NOW_BAR_VIEW,
+                    EXTRA_ONGOING_ACTIVITY_NOTI_CHIP_EXPANDED_VIEW,
+                    EXTRA_ONGOING_ACTIVITY_NOTI_EXPANDED_REMOTEVIEW,
+                    EXTRA_ONGOING_ACTIVITY_NOTI_NOWBAR_REMOTEVIEW,
+                    EXTRA_ONGOING_ACTIVITY_NOTI_CHRONOMETER_REMOTEVIEW
+            }) {
+                RemoteViews view = extras.getParcelable(key, RemoteViews.class);
+                if (view != null) view.visitUris(visitor);
+            }
+
             visitIconUri(visitor, extras.getParcelable(EXTRA_LARGE_ICON_BIG, Icon.class));
             visitIconUri(visitor, extras.getParcelable(EXTRA_PICTURE_ICON, Icon.class));
 
@@ -19067,4 +19197,247 @@ public class Notification implements Parcelable
             return mSecondaryEmphasisText;
         }
     }
+
+    /**
+     * Samsung Electronics ongoing activity style (S741BXXS2AZI5).
+     * @hide
+     */
+    public static class OngoingActivityStyle extends Style {
+        public static final int NOW_BAR_EXPANDABLE_TYPE_FULL = 2;
+        public static final int NOW_BAR_EXPANDABLE_TYPE_HALF = 1;
+        public static final int NOW_BAR_EXPANDABLE_TYPE_NONE = 0;
+        private Icon mBadge;
+        private int mCardBackground;
+        private Icon mCardIcon;
+        private int mChipBackground;
+        private Icon mChipIcon;
+        private boolean mChronometerCountDown;
+        private float mChronometerSpeed;
+        private boolean mChronometerStart;
+        private RemoteViews mCustomCardViewCenterUI;
+        private RemoteViews mCustomExpandedCardView;
+        private CharSequence mExpandedChipText;
+        private RemoteViews mExpandedChipView;
+        private RemoteViews mExpandedNowBarView;
+        private CharSequence mMoreInfo;
+        private CharSequence mPrimaryInfo;
+        private CharSequence mSecondaryInfo;
+        private ArrayList<Action> mActions = new ArrayList<>(3);
+        private ArrayList<Integer> mActionBgColors = new ArrayList<>(3);
+        private int mNowBarExpandableType = 0;
+        private int mPrimaryActionNum = 0;
+        private Long mChronometerBase = 0L;
+        private String mChronometerFormat = "";
+
+        @IntDef(prefix = {"NOW_BAR_EXPANDABLE_TYPE_"}, value = {
+                NOW_BAR_EXPANDABLE_TYPE_NONE, NOW_BAR_EXPANDABLE_TYPE_HALF,
+                NOW_BAR_EXPANDABLE_TYPE_FULL
+        })
+        @Retention(RetentionPolicy.SOURCE)
+        public @interface NowBarExpandableType {
+        }
+
+        @Override
+        public boolean areNotificationsVisiblyDifferent(Style style) {
+            return true;
+        }
+
+        @Override
+        public boolean displayCustomViewInline() {
+            return false;
+        }
+
+        @Override
+        public boolean hasSummaryInHeader() {
+            return false;
+        }
+
+        public OngoingActivityStyle() {
+        }
+
+        public OngoingActivityStyle setChipIcon(Icon icon) {
+            this.mChipIcon = icon;
+            return this;
+        }
+
+        public OngoingActivityStyle setExpandedChipView(RemoteViews remoteViews) {
+            this.mExpandedChipView = remoteViews;
+            return this;
+        }
+
+        public OngoingActivityStyle setChipBackground(int i) {
+            this.mChipBackground = i;
+            return this;
+        }
+
+        public OngoingActivityStyle addAction(Action action) {
+            addAction(action, null);
+            return this;
+        }
+
+        public OngoingActivityStyle addAction(Action action, Integer num) {
+            if (action == null) return this;
+            if (mActions == null) {
+                mActions = mBuilder == null ? new ArrayList<>(3)
+                        : new ArrayList<>(mBuilder.mActions);
+            }
+            mActions.add(action);
+            ArrayList<Integer> arrayList = this.mActionBgColors;
+            if (num != null) {
+                arrayList.add(num);
+            } else {
+                arrayList.add(1);
+            }
+            return this;
+        }
+
+        public OngoingActivityStyle setPrimaryActionNumber(int i) {
+            this.mPrimaryActionNum = i;
+            return this;
+        }
+
+        public OngoingActivityStyle setCardIcon(Icon icon) {
+            this.mCardIcon = icon;
+            return this;
+        }
+
+        public OngoingActivityStyle setBadge(Icon icon) {
+            this.mBadge = icon;
+            return this;
+        }
+
+        public OngoingActivityStyle setPrimaryInfo(CharSequence charSequence) {
+            this.mPrimaryInfo = safeCharSequence(charSequence);
+            return this;
+        }
+
+        public OngoingActivityStyle setSecondaryInfo(CharSequence charSequence) {
+            this.mSecondaryInfo = safeCharSequence(charSequence);
+            return this;
+        }
+
+        public OngoingActivityStyle setMoreInfo(CharSequence charSequence) {
+            this.mMoreInfo = safeCharSequence(charSequence);
+            return this;
+        }
+
+        public OngoingActivityStyle setCustomCardViewCenterUI(RemoteViews remoteViews) {
+            this.mCustomCardViewCenterUI = remoteViews;
+            return this;
+        }
+
+        public OngoingActivityStyle setCustomExpandedCardView(RemoteViews remoteViews) {
+            this.mCustomExpandedCardView = remoteViews;
+            return this;
+        }
+
+        public OngoingActivityStyle setCardBackground(int i) {
+            this.mCardBackground = i;
+            return this;
+        }
+
+        public OngoingActivityStyle setExpandedNowBarView(RemoteViews remoteViews, @NowBarExpandableType int i) {
+            this.mExpandedNowBarView = remoteViews;
+            this.mNowBarExpandableType = i;
+            return this;
+        }
+
+        public OngoingActivityStyle setExpandedChipText(CharSequence charSequence) {
+            this.mExpandedChipText = safeCharSequence(charSequence);
+            return this;
+        }
+
+        public OngoingActivityStyle setChronometerBase(Long l) {
+            this.mChronometerBase = l == null ? 0L : l;
+            return this;
+        }
+
+        public OngoingActivityStyle setChronometerFormat(String str) {
+            this.mChronometerFormat = str;
+            return this;
+        }
+
+        public OngoingActivityStyle setChronometerCountDown(boolean z) {
+            this.mChronometerCountDown = z;
+            return this;
+        }
+
+        public OngoingActivityStyle setChronometerStart(boolean z) {
+            this.mChronometerStart = z;
+            return this;
+        }
+
+        public OngoingActivityStyle setChronometerSpeed(float f) {
+            this.mChronometerSpeed = f;
+            return this;
+        }
+
+
+        @Override
+        public Notification buildStyled(Notification notification) {
+            Notification notificationBuildStyled = super.buildStyled(notification);
+            if (mActions != null) mBuilder.mActions = new ArrayList<>(mActions);
+            notificationBuildStyled.actions = new Action[this.mBuilder.mActions.size()];
+            this.mBuilder.mActions.toArray(notificationBuildStyled.actions);
+            return notificationBuildStyled;
+        }
+
+        @Override
+        public void addExtras(Bundle bundle) {
+            super.addExtras(bundle);
+            bundle.putParcelable(Notification.EXTRA_ONGOING_ACTIVITY_CHIP_ICON, this.mChipIcon);
+            bundle.putParcelable(Notification.EXTRA_ONGOING_ACTIVITY_EXPANDED_CHIP_VIEW, this.mExpandedChipView);
+            bundle.putInt(Notification.EXTRA_ONGOING_ACTIVITY_CHIP_BACKGROUND, this.mChipBackground);
+            bundle.putIntegerArrayList(Notification.EXTRA_ONGOING_ACTIVITY_ACTION_BG_COLOR, this.mActionBgColors);
+            bundle.putInt(Notification.EXTRA_ONGOING_ACTIVITY_PRIMARY_ACTION, this.mPrimaryActionNum);
+            bundle.putParcelable(Notification.EXTRA_ONGOING_ACTIVITY_CARD_ICON, this.mCardIcon);
+            bundle.putParcelable(Notification.EXTRA_ONGOING_ACTIVITY_BADGE, this.mBadge);
+            bundle.putCharSequence(Notification.EXTRA_ONGOING_ACTIVITY_PRIMARY_INFO, this.mPrimaryInfo);
+            bundle.putCharSequence(Notification.EXTRA_ONGOING_ACTIVITY_SECONDARY_INFO, this.mSecondaryInfo);
+            bundle.putCharSequence(Notification.EXTRA_ONGOING_ACTIVITY_MORE_INFO, this.mMoreInfo);
+            bundle.putParcelable(Notification.EXTRA_ONGOING_ACTIVITY_CUSTOM_CARD_VIEW_CENTER_UI, this.mCustomCardViewCenterUI);
+            bundle.putParcelable(Notification.EXTRA_ONGOING_ACTIVITY_CUSTOM_EXPANDED_CARD_VIEW, this.mCustomExpandedCardView);
+            bundle.putInt(Notification.EXTRA_ONGOING_ACTIVITY_CARD_BACKGROUND, this.mCardBackground);
+            bundle.putParcelable(Notification.EXTRA_ONGOING_ACTIVITY_EXPANDED_NOW_BAR_VIEW, this.mExpandedNowBarView);
+            bundle.putInt(Notification.EXTRA_ONGOING_ACTIVITY_NOW_BAR_EXPANDABLE_TYPE, this.mNowBarExpandableType);
+            bundle.putCharSequence(Notification.EXTRA_ONGOING_ACTIVITY_EXPANDED_CHIP_TEXT, this.mExpandedChipText);
+            bundle.putLong(Notification.EXTRA_ONGOING_ACTIVITY_CHRONOMETER_BASE, this.mChronometerBase.longValue());
+            bundle.putString(Notification.EXTRA_ONGOING_ACTIVITY_CHRONOMETER_FORMAT, this.mChronometerFormat);
+            bundle.putBoolean(Notification.EXTRA_ONGOING_ACTIVITY_CHRONOMETER_COUNTDOWN, this.mChronometerCountDown);
+            bundle.putBoolean(Notification.EXTRA_ONGOING_ACTIVITY_CHRONOMETER_START, this.mChronometerStart);
+            bundle.putFloat(Notification.EXTRA_ONGOING_ACTIVITY_CHRONOMETER_SPEED, this.mChronometerSpeed);
+        }
+
+        @Override
+        protected void restoreFromExtras(Bundle bundle) {
+            super.restoreFromExtras(bundle);
+            // Recovered builders already hold the parceled notification actions.
+            mActions = null;
+            this.mChipIcon = (Icon) bundle.getParcelable(Notification.EXTRA_ONGOING_ACTIVITY_CHIP_ICON, Icon.class);
+            this.mExpandedChipView = (RemoteViews) bundle.getParcelable(Notification.EXTRA_ONGOING_ACTIVITY_EXPANDED_CHIP_VIEW, RemoteViews.class);
+            this.mChipBackground = bundle.getInt(Notification.EXTRA_ONGOING_ACTIVITY_CHIP_BACKGROUND);
+            ArrayList<Integer> integerArrayList = bundle.getIntegerArrayList(Notification.EXTRA_ONGOING_ACTIVITY_ACTION_BG_COLOR);
+            if (integerArrayList != null) {
+                this.mActionBgColors = integerArrayList;
+            }
+            this.mPrimaryActionNum = bundle.getInt(Notification.EXTRA_ONGOING_ACTIVITY_PRIMARY_ACTION);
+            this.mCardIcon = (Icon) bundle.getParcelable(Notification.EXTRA_ONGOING_ACTIVITY_CARD_ICON, Icon.class);
+            this.mBadge = (Icon) bundle.getParcelable(Notification.EXTRA_ONGOING_ACTIVITY_BADGE, Icon.class);
+            this.mPrimaryInfo = bundle.getCharSequence(Notification.EXTRA_ONGOING_ACTIVITY_PRIMARY_INFO);
+            this.mSecondaryInfo = bundle.getCharSequence(Notification.EXTRA_ONGOING_ACTIVITY_SECONDARY_INFO);
+            this.mMoreInfo = bundle.getCharSequence(Notification.EXTRA_ONGOING_ACTIVITY_MORE_INFO);
+            this.mCustomCardViewCenterUI = (RemoteViews) bundle.getParcelable(Notification.EXTRA_ONGOING_ACTIVITY_CUSTOM_CARD_VIEW_CENTER_UI, RemoteViews.class);
+            this.mCustomExpandedCardView = (RemoteViews) bundle.getParcelable(Notification.EXTRA_ONGOING_ACTIVITY_CUSTOM_EXPANDED_CARD_VIEW, RemoteViews.class);
+            this.mCardBackground = bundle.getInt(Notification.EXTRA_ONGOING_ACTIVITY_CARD_BACKGROUND);
+            this.mExpandedNowBarView = (RemoteViews) bundle.getParcelable(Notification.EXTRA_ONGOING_ACTIVITY_EXPANDED_NOW_BAR_VIEW, RemoteViews.class);
+            this.mNowBarExpandableType = bundle.getInt(Notification.EXTRA_ONGOING_ACTIVITY_NOW_BAR_EXPANDABLE_TYPE);
+            this.mExpandedChipText = bundle.getCharSequence(Notification.EXTRA_ONGOING_ACTIVITY_EXPANDED_CHIP_TEXT);
+            this.mChronometerBase = Long.valueOf(bundle.getLong(Notification.EXTRA_ONGOING_ACTIVITY_CHRONOMETER_BASE, 0L));
+            this.mChronometerFormat = bundle.getString(Notification.EXTRA_ONGOING_ACTIVITY_CHRONOMETER_FORMAT, "");
+            this.mChronometerCountDown = bundle.getBoolean(Notification.EXTRA_ONGOING_ACTIVITY_CHRONOMETER_COUNTDOWN, false);
+            this.mChronometerStart = bundle.getBoolean(Notification.EXTRA_ONGOING_ACTIVITY_CHRONOMETER_START, false);
+            this.mChronometerSpeed = bundle.getFloat(Notification.EXTRA_ONGOING_ACTIVITY_CHRONOMETER_SPEED, 1.0f);
+        }
+    }
+
 }
