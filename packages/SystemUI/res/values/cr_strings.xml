@@ -314,4 +314,8 @@
 
     <!-- Blur QS tile -->
     <string name="quick_settings_blur_label">Blur</string>
+    <!-- Dynamic island -->
+
+    <!-- ColorOS style QS: shown in the media slot when nothing is playing -->
+    <string name="qs_coloros_no_media">No media playing</string>
 </resources>
