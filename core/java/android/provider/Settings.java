@@ -14892,6 +14892,72 @@ public final class Settings {
         public static final String LOCK_SCREEN_CUSTOM_CLOCK_AOD_ANIM = "lock_screen_custom_clock_aod_anim";
 
         /**
+         * Custom clock animation
+         * @hide
+         */
+        public static final String LOCK_SCREEN_CUSTOM_CLOCK_ALBUM_ART_COLOR = "lock_screen_custom_clock_album_art_color";
+
+        /**
+         * Custom clock wobble
+         * @hide
+         */
+        public static final String LOCK_SCREEN_CUSTOM_CLOCK_WOBBLE_ON_CHARGE = "lock_screen_custom_clock_wobble_on_charge";
+
+        /**
+         * Custom start margin
+         * @hide
+         */
+        public static final String LOCK_SCREEN_CUSTOM_CLOCK_MARGIN_START = "lock_screen_custom_clock_margin_start";
+
+        /**
+         * Custom gradient
+         * @hide
+         */
+        public static final String LOCK_SCREEN_CUSTOM_CLOCK_GRADIENT_ENABLED = "lock_screen_custom_clock_gradient_enabled";
+
+        /**
+         * Custom gradient start
+         * @hide
+         */
+        public static final String LOCK_SCREEN_CUSTOM_CLOCK_GRADIENT_COLOR_START = "lock_screen_custom_clock_gradient_color_start";
+
+        /**
+         * Custom gradient end
+         * @hide
+         */
+        public static final String LOCK_SCREEN_CUSTOM_CLOCK_GRADIENT_COLOR_END = "lock_screen_custom_clock_gradient_color_end";
+
+        /**
+         * Custom gradient anchor
+         * @hide
+         */
+        public static final String LOCK_SCREEN_CUSTOM_CLOCK_GRADIENT_ANCHOR_Y = "lock_screen_custom_clock_gradient_anchor_y";
+
+        /**
+         * Custom gradient radius
+         * @hide
+         */
+        public static final String LOCK_SCREEN_CUSTOM_CLOCK_GRADIENT_RADIUS = "lock_screen_custom_clock_gradient_radius";
+
+        
+
+        
+
+        
+
+        
+
+        
+
+        
+
+        /**
+         * Shade color style customization
+         * @hide
+         */
+        public static final String SHADE_COLOR_STYLE = "shade_color_style";
+
+        /**
          * Keys we no longer back up under the current schema, but want to continue to
          * process when restoring historical backup datasets.
          *
