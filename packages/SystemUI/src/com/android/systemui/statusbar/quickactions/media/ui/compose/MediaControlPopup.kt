@@ -16,6 +16,9 @@
 
 package com.android.systemui.statusbar.quickactions.media.ui.compose
 
+import androidx.compose.ui.res.stringResource
+import com.android.systemui.media.oneui.OneUiPlayerAction
+import com.android.systemui.media.oneui.OneUiDynamicPlayer
 import android.content.Context
 import android.graphics.drawable.GradientDrawable
 import android.graphics.drawable.LayerDrawable
@@ -149,102 +152,48 @@ fun MediaControlPopup(
     useWaveform: Boolean = false,
     modifier: Modifier = Modifier,
 ) {
-    val accent = MaterialTheme.colorScheme.primary
-    PopupSurface(
-        shape = PopupShape,
-        modifier = modifier.widthIn(min = 320.dp, max = 400.dp),
-    ) {
-        Column(
-            modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 18.dp),
-            verticalArrangement = Arrangement.spacedBy(18.dp),
-        ) {
-            Row(
-                modifier =
-                    Modifier.fillMaxWidth().clickable(
-                        interactionSource = remember { MutableInteractionSource() },
-                        indication = null,
-                        enabled = model.openApp != null,
-                    ) {
-                        model.openApp?.invoke()
-                    },
-                horizontalArrangement = Arrangement.spacedBy(16.dp),
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                MediaArtwork(model = model)
-                Column(
-                    modifier = Modifier.weight(1f),
-                    verticalArrangement = Arrangement.spacedBy(4.dp),
-                ) {
-                    model.appName?.takeIf { it.isNotBlank() }?.let { appName ->
-                        Text(
-                            text = appName.uppercase(),
-                            style = MaterialTheme.typography.labelMedium,
-                            fontWeight = FontWeight.SemiBold,
-                            color = accent.copy(alpha = 0.82f),
-                            maxLines = 1,
-                            overflow = TextOverflow.Ellipsis,
-                        )
-                    }
-                    Text(
-                        text = model.songName?.toString().orEmpty(),
-                        style = MaterialTheme.typography.titleLarge,
-                        fontWeight = FontWeight.SemiBold,
-                        color = LocalContentColor.current,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis,
-                    )
-                    model.artistName?.takeIf { it.isNotBlank() }?.let { artist ->
-                        Text(
-                            text = artist.toString(),
-                            style = MaterialTheme.typography.bodyLarge,
-                            color = LocalContentColor.current.copy(alpha = 0.8f),
-                            maxLines = 1,
-                            overflow = TextOverflow.Ellipsis,
-                        )
-                    }
-                }
-            }
-
-            if (model.durationMs > 0L) {
+    val currentModel by rememberUpdatedState(model)
+    var seekProgress by remember(model.packageName) { mutableStateOf(0f) }
+    val progress = if (model.durationMs > 0L) {
+        (model.positionMs.toDouble() / model.durationMs).toFloat().coerceIn(0f, 1f)
+    } else 0f
+    fun action(value: MediaAction?, fallback: String): OneUiPlayerAction? = value?.let {
+        OneUiPlayerAction(it.contentDescription?.toString()?.takeIf(String::isNotBlank) ?: fallback,
+            it.action?.let { runnable -> { runnable.run() } })
+    }
+    val seekable = model.canBeScrubbed && model.seekTo != null && model.durationMs > 0L
+    OneUiDynamicPlayer(
+        title = model.songName?.toString().orEmpty(),
+        artist = model.artistName?.toString().orEmpty(),
+        artwork = model.artworkIcon ?: model.appIcon,
+        playing = model.isPlaying,
+        previous = action(model.previousAction, stringResource(R.string.controls_media_button_prev)),
+        playPause = action(model.playOrPause, stringResource(
+            if (model.isPlaying) R.string.controls_media_button_pause else R.string.controls_media_button_play)),
+        next = action(model.nextAction, stringResource(R.string.controls_media_button_next)),
+        progress = progress,
+        progressText = DateUtils.formatElapsedTime(model.positionMs.coerceAtLeast(0L) / 1000L),
+        durationText = DateUtils.formatElapsedTime(model.durationMs.coerceAtLeast(0L) / 1000L),
+        onSeek = if (seekable) { { seekProgress = it } } else null,
+        onSeekFinished = if (seekable) {
+            { currentModel.seekTo?.invoke((seekProgress * currentModel.durationMs).toLong()) }
+        } else null,
+        onOpenApp = model.openApp,
+        modifier = modifier.widthIn(min = 280.dp, max = 400.dp),
+        progressContent = if (useWaveform) {
+            @Composable {
                 MediaProgressSection(
                     positionMs = model.positionMs,
                     durationMs = model.durationMs,
                     isPlaying = model.isPlaying,
                     canBeScrubbed = model.canBeScrubbed,
                     onSeekTo = model.seekTo,
-                    accent = accent,
-                    useWaveform = useWaveform,
+                    accent = Color.White,
+                    useWaveform = true,
                 )
             }
-
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(16.dp, Alignment.CenterHorizontally),
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                MediaActionButton(
-                    action = model.previousAction,
-                    iconOverrideId = R.drawable.ic_skip_previous_filled,
-                    containerColor = LocalContentColor.current.copy(alpha = 0.11f),
-                    iconTint = LocalContentColor.current,
-                )
-                MediaActionButton(
-                    action = model.playOrPause,
-                    containerColor = accent,
-                    iconTint = MaterialTheme.colorScheme.onPrimary,
-                    buttonSize = 72.dp,
-                    iconSize = 28.dp,
-                    emphasized = true,
-                )
-                MediaActionButton(
-                    action = model.nextAction,
-                    iconOverrideId = R.drawable.ic_skip_next_filled,
-                    containerColor = LocalContentColor.current.copy(alpha = 0.11f),
-                    iconTint = LocalContentColor.current,
-                )
-            }
-        }
-    }
+        } else null,
+    )
 }
 
 @Composable
