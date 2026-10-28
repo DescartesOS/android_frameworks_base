@@ -25,6 +25,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -79,11 +80,14 @@ fun LockscreenExpandedMediaArt(alpha: () -> Float, modifier: Modifier = Modifier
             }
     }
     LaunchedEffect(Unit) {
-        snapshotFlow { state.fraction > 0f || (state.enabled && state.mediaVisible) }
+        snapshotFlow { state.fraction > 0f && state.artwork != null && alpha() > 0f }
             .distinctUntilChanged()
             .collect { WallpaperDepthUtils.setExpandedMediaArtVisible(it) }
     }
 
+    DisposableEffect(Unit) {
+        onDispose { WallpaperDepthUtils.setExpandedMediaArtVisible(false) }
+    }
     LaunchedEffect(Unit) { snapshotFlow { alpha() }.collect { state.lockscreenAlpha = it } }
 
     val context = LocalContext.current
