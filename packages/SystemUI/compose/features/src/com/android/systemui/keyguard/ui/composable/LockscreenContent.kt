@@ -16,16 +16,29 @@
 
 package com.android.systemui.keyguard.ui.composable
 
+import android.database.ContentObserver
+import android.os.Handler
+import android.os.Looper
+import android.os.UserHandle
+import android.provider.Settings
+import android.view.LayoutInflater
 import android.view.View
+import android.widget.FrameLayout
 import androidx.annotation.VisibleForTesting
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.focusable
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.wrapContentHeight
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
+import androidx.compose.runtime.produceState
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.referentialEqualityPolicy
 import androidx.compose.runtime.remember
@@ -34,12 +47,15 @@ import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.platform.LocalView
+import androidx.compose.ui.res.dimensionResource
+import androidx.compose.ui.viewinterop.AndroidView
 import com.android.compose.animation.scene.ContentScope
 import com.android.compose.animation.scene.content.state.TransitionState
 import com.android.internal.jank.Cuj
 import com.android.internal.jank.Cuj.CujType
 import com.android.internal.jank.InteractionJankMonitor
 import com.android.systemui.compose.modifiers.sysuiResTag
+import com.android.systemui.clocks.ClockStyle
 import com.android.systemui.keyguard.domain.interactor.KeyguardClockInteractor
 import com.android.systemui.keyguard.shared.model.KeyguardState
 import com.android.systemui.keyguard.shared.transition.KeyguardTransitionAnimationCallback
@@ -53,6 +69,7 @@ import com.android.systemui.keyguard.ui.viewmodel.ViewStateAccessor
 import com.android.systemui.lifecycle.rememberViewModel
 import com.android.systemui.plugins.keyguard.ui.composable.elements.LockscreenElementContext
 import com.android.systemui.plugins.keyguard.ui.composable.elements.LockscreenElementKeys
+import com.android.systemui.res.R
 import kotlin.math.min
 import kotlinx.coroutines.flow.first
 import platform.test.motion.compose.values.MotionTestValueKey
@@ -167,20 +184,73 @@ class LockscreenContent(
             lockscreenBehindScrimViewModel,
             Modifier.element(LockscreenElementKeys.BehindScrim),
         )
-        with(lockscreenElements) {
-            LockscreenElement(
-                LockscreenElementKeys.Root,
-                modifier
-                    .sysuiResTag("keyguard_root_view")
-                    .graphicsLayer { alpha = min(viewModel.alpha, contentAlphaAnimatable.value) }
-                    .motionTestValues {
-                        LockscreenElementKeys.Root.currentAlpha()?.let { alpha ->
-                            alpha exportAs LockscreenContentMotionTestKeys.Alpha
-                        }
-                    }
-                    .focusable(),
-                LockscreenElementContext(nonAuthUI = Modifier.nonAuthUI(viewModel)),
+        val resolver = view.context.contentResolver
+        val customClockStyle by produceState(
+            initialValue = Settings.Secure.getIntForUser(
+                resolver, Settings.Secure.LOCK_SCREEN_CUSTOM_CLOCK_STYLE, 0, UserHandle.USER_CURRENT
+            ),
+            resolver,
+        ) {
+            val observer = object : ContentObserver(Handler(Looper.getMainLooper())) {
+                override fun onChange(selfChange: Boolean) {
+                    value = Settings.Secure.getIntForUser(
+                        resolver, Settings.Secure.LOCK_SCREEN_CUSTOM_CLOCK_STYLE, 0,
+                        UserHandle.USER_CURRENT
+                    )
+                }
+            }
+            resolver.registerContentObserver(
+                Settings.Secure.getUriFor(Settings.Secure.LOCK_SCREEN_CUSTOM_CLOCK_STYLE),
+                false,
+                observer,
             )
+            awaitDispose { resolver.unregisterContentObserver(observer) }
+        }
+
+        Box(
+            modifier = modifier.fillMaxSize().graphicsLayer {
+                alpha = min(viewModel.alpha, contentAlphaAnimatable.value)
+            }
+        ) {
+            with(lockscreenElements) {
+                LockscreenElement(
+                    LockscreenElementKeys.Root,
+                    Modifier
+                        .sysuiResTag("keyguard_root_view")
+                        .motionTestValues {
+                            LockscreenElementKeys.Root.currentAlpha()?.let { alpha ->
+                                alpha exportAs LockscreenContentMotionTestKeys.Alpha
+                            }
+                        }
+                        .focusable(),
+                    LockscreenElementContext(nonAuthUI = Modifier.nonAuthUI(viewModel)),
+                )
+            }
+            if (customClockStyle != 0) {
+                AndroidView(
+                    factory = { context ->
+                        val parent = FrameLayout(context)
+                        LayoutInflater.from(context)
+                            .inflate(R.layout.keyguard_clock_style, parent, false)
+                            .apply {
+                                isClickable = false
+                                isFocusable = false
+                                importantForAccessibility = View.IMPORTANT_FOR_ACCESSIBILITY_NO
+                            }
+                    },
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .wrapContentHeight()
+                        .padding(top = dimensionResource(R.dimen.status_bar_height) * 1.25f),
+                    update = { clockView ->
+                        (clockView as? ClockStyle)?.onTuningChanged(
+                            ClockStyle.CLOCK_STYLE_KEY,
+                            customClockStyle.toString(),
+                        )
+                        clockView.requestLayout()
+                    },
+                )
+            }
         }
         LockscreenFrontScrim(lockscreenFrontScrimViewModel)
     }

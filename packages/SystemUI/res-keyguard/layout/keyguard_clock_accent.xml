@@ -80,7 +80,7 @@
             android:format24Hour="HH:mm"
             android:tag="text2"
             android:textColor="#FFFFFF"
-            android:textSize="28sp" />
+            android:textSize="48sp" />
     </LinearLayout>
 
     <LinearLayout
