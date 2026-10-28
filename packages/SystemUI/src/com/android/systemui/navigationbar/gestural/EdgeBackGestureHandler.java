@@ -1250,6 +1250,13 @@ public class EdgeBackGestureHandler implements TunerService.Tunable {
 
     private void onMotionEvent(MotionEvent ev) {
         int action = ev.getActionMasked();
+        if (action == MotionEvent.ACTION_DOWN &&
+                com.android.systemui.navigationbar.gestural.onehand.OneHandGestureController
+                        .shouldHandleDown(ev)) {
+            mAllowGesture = false;
+            mLogGesture = false;
+            return;
+        }
         DisplayBackGestureHandler displayBackGestureHandler = mDisplayBackGestureHandlers.get(
                 ev.getDisplayId());
         if (displayBackGestureHandler == null) {

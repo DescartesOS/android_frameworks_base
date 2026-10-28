@@ -59,6 +59,7 @@ import com.android.systemui.statusbar.chips.ui.viewmodel.OngoingActivityChipsRef
 import com.android.systemui.statusbar.gesture.GesturePointerEventListener
 import com.android.systemui.statusbar.notification.InstantAppNotifier
 import com.android.systemui.statusbar.notification.headsup.StatusBarHeadsUpChangeListener
+import com.android.systemui.navigationbar.gestural.onehand.OneHandGestureController
 import com.android.systemui.statusbar.quickactions.media.MediaControlChipStartable
 import com.android.systemui.stylus.StylusUsiPowerStartable
 import com.android.systemui.temporarydisplay.chipbar.ChipbarCoordinator
@@ -359,6 +360,11 @@ abstract class SystemUICoreStartableModule {
     @IntoMap
     @ClassKey(AxPlatformServiceImpl::class)
     abstract fun bindAxPlatformService(impl: AxPlatformServiceImpl): CoreStartable
+
+    @Binds
+    @IntoMap
+    @ClassKey(OneHandGestureController::class)
+    abstract fun bindOneHandGestures(impl: OneHandGestureController): CoreStartable
 
     @Binds
     @IntoMap
