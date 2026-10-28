@@ -29,6 +29,7 @@ import android.os.Bundle
 import android.os.Trace
 import android.os.Trace.TRACE_TAG_APP
 import android.provider.AlarmClock
+import android.provider.Settings
 import android.view.DisplayCutout
 import android.view.View
 import android.view.ViewGroup
@@ -81,6 +82,7 @@ import com.android.systemui.statusbar.pipeline.battery.ui.viewmodel.BatteryViewM
 import com.android.systemui.statusbar.pipeline.shared.ui.view.SystemStatusIconsLayoutHelper
 import com.android.systemui.statusbar.policy.Clock
 import com.android.systemui.statusbar.policy.ConfigurationController
+import com.android.systemui.tuner.TunerService
 import com.android.systemui.statusbar.policy.NextAlarmController
 import com.android.systemui.statusbar.policy.VariableDateView
 import com.android.systemui.statusbar.policy.VariableDateViewController
@@ -122,7 +124,8 @@ constructor(
     private val nextAlarmController: NextAlarmController,
     private val activityStarter: ActivityStarter,
     private val statusOverlayHoverListenerFactory: StatusOverlayHoverListenerFactory,
-) : ViewController<View>(header), Dumpable {
+    private val tunerService: TunerService,
+) : ViewController<View>(header), Dumpable, TunerService.Tunable {
 
     private val statusBarContentInsetsProvider
         get() =
@@ -144,6 +147,11 @@ constructor(
         internal val LARGE_SCREEN_HEADER_CONSTRAINT = R.id.large_screen_header_constraint
 
         @VisibleForTesting internal val DEFAULT_CLOCK_INTENT = Intent(AlarmClock.ACTION_SHOW_ALARMS)
+
+        internal val QS_PANEL_STYLE = "system:" + Settings.System.QS_PANEL_STYLE
+
+        /** Value of [Settings.System.QS_PANEL_STYLE] for the ColorOS panel. */
+        private const val QS_PANEL_STYLE_COLOROS = 2
 
         private fun Int.stateToString() =
             when (this) {
@@ -260,6 +268,9 @@ constructor(
         }
 
     private var singleCarrier = false
+
+    /** Whether the ColorOS QS panel style is on, which gives the expanded header one row. */
+    private var colorOSStyle = false
 
     private val demoModeReceiver =
         object : DemoMode {
@@ -436,6 +447,8 @@ constructor(
         systemIconsHoverContainer.setOnHoverListener(
             statusOverlayHoverListenerFactory.createListener(systemIconsHoverContainer)
         )
+
+        tunerService.addTunable(this, QS_PANEL_STYLE)
     }
 
     override fun onViewDetached() {
@@ -447,6 +460,23 @@ constructor(
         statusBarIconController.removeIconGroup(iconManager)
         nextAlarmController.removeCallback(nextAlarmCallback)
         systemIconsHoverContainer.setOnHoverListener(null)
+        tunerService.removeTunable(this)
+    }
+
+    override fun onTuningChanged(key: String?, value: String?) {
+        when (key) {
+            QS_PANEL_STYLE -> {
+                val enabled = TunerService.parseInteger(value, 0) == QS_PANEL_STYLE_COLOROS
+                if (enabled != colorOSStyle) {
+                    colorOSStyle = enabled
+                    loadConstraints()
+                    updateTransition()
+                    updateCarrierGroupPadding()
+                }
+            }
+
+            else -> return
+        }
     }
 
     fun disable(state1: Int, state2: Int, animate: Boolean) {
@@ -488,7 +518,10 @@ constructor(
             .load(context, resources.getXml(R.xml.qqs_header))
         header
             .getConstraintSet(QS_HEADER_CONSTRAINT)
-            .load(context, resources.getXml(R.xml.qs_header))
+            .load(
+                context,
+                resources.getXml(if (colorOSStyle) R.xml.qs_header_coloros else R.xml.qs_header),
+            )
         header
             .getConstraintSet(LARGE_SCREEN_HEADER_CONSTRAINT)
             .load(context, resources.getXml(R.xml.large_screen_shade_header))
@@ -507,8 +540,14 @@ constructor(
 
     private fun updateCarrierGroupPadding() {
         clock.doOnLayout {
+            // The ColorOS header hides the clock in the expanded state, so the carrier name
+            // starts at the edge.
             val maxClockWidth =
-                (clock.width * resources.getFloat(R.dimen.qqs_expand_clock_scale)).toInt()
+                if (colorOSStyle) {
+                    0
+                } else {
+                    (clock.width * resources.getFloat(R.dimen.qqs_expand_clock_scale)).toInt()
+                }
             mShadeCarrierGroup.setPaddingRelative(maxClockWidth, 0, 0, 0)
         }
     }

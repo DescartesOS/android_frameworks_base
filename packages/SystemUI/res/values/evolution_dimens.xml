@@ -1,0 +1,40 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+     SPDX-FileCopyrightText: Evolution X
+     SPDX-License-Identifier: Apache-2.0
+-->
+<resources>
+    <!-- Face unlock icon -->
+
+    <!-- HD calling icon -->
+
+    <!-- The height of the WiFi toggle layout in Internet panel -->
+
+    <!-- FPS Info tile -->
+
+    <!-- Udfps fingerprint animation -->
+
+    <!-- Extra bottom offset for the Dynamic Bar keyguard chip -->
+    <dimen name="ax_dynamic_bar_keyguard_chip_extra_bottom_margin">0dp</dimen>
+
+    <!-- Sb Chip -->
+
+    <!-- OmniStyle custom headers -->
+
+    <!-- Lyric -->
+    <dimen name="lyric_icon_margin_end">4dp</dimen>
+    <dimen name="lyric_padding_end">4dp</dimen>
+
+    <!-- Weather -->
+
+    <!-- Lockscreen Clock/AOD -->  
+    <dimen name="custom_aod_image_size">180dp</dimen>
+    <dimen name="keyguard_status_area_margin_top">0dp</dimen>
+
+    <!-- Biometric view -->
+
+    <!-- ColorOS QS header: 12dp, the 44dp buttons and 20dp above the status row -->
+    <dimen name="qs_coloros_header_status_top">76dp</dimen>
+    <!-- ColorOS QS header: the above, the status row and 20dp below it -->
+    <dimen name="qs_coloros_header_height">120dp</dimen>
+</resources>
