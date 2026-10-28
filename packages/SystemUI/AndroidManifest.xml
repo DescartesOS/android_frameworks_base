@@ -955,6 +955,12 @@
 
         <!-- ContentProvider that returns a People Tile preview for a given shortcut -->
         <provider
+            android:name=".clocks.ClockCatalogueProvider"
+            android:authorities="com.android.systemui.clockcatalogue"
+            android:exported="true"
+            android:permission="android.permission.CUSTOMIZE_SYSTEM_UI" />
+
+        <provider
             android:name="com.android.systemui.people.PeopleProvider"
             android:authorities="com.android.systemui.people.PeopleProvider"
             android:exported="true"
