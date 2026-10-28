@@ -15,6 +15,9 @@
  */
 package com.android.systemui.util;
 
+import android.animation.Animator;
+import android.animation.AnimatorListenerAdapter;
+import android.animation.ValueAnimator;
 import android.content.Context;
 import android.hardware.Sensor;
 import android.hardware.SensorEvent;
@@ -36,15 +39,12 @@ public final class SpatialEffectController implements SensorEventListener {
     private static final int SENSOR_DELAY = SensorManager.SENSOR_DELAY_GAME;
 
     private static final float LOW_PASS_ALPHA = 0.15f;
-    private static final float STABLE_SPEED_THRESHOLD = 0.08f;
-    private static final float ADAPT_ALPHA_STABLE = 0.05f;
-    private static final float ADAPT_ALPHA_MOVING = 0.003f;
-    private static final float DEAD_ZONE_DEGREES = 0.4f;
-    private static final float MAX_TILT_DEGREES = 18.0f;
-    private static final float MAX_X_DP = 24f;
-    private static final float MAX_Y_DP = 18f;
-    private static final float BACKGROUND_MULTIPLIER = 0.50f;
-    private static final float FOREGROUND_MULTIPLIER = 0.60f;
+    private static final float DEAD_ZONE_DEGREES = 0.2f;
+    private static final float MAX_TILT_DEGREES = 12.0f;
+    private static final float MAX_X_DP = 40f;
+    private static final float MAX_Y_DP = 32f;
+    private static final float BACKGROUND_MULTIPLIER = -0.35f;
+    private static final float FOREGROUND_MULTIPLIER = 0.75f;
     private static final float SPRING_FACTOR = 0.16f;
     private static final float SETTLE_THRESHOLD_PX = 0.25f;
     private static final long RESET_DURATION_MS = 300;
@@ -70,12 +70,11 @@ public final class SpatialEffectController implements SensorEventListener {
     private boolean mFrameScheduled = false;
 
     private final float[] mRotationMatrix = new float[9];
-    private final float[] mOrientationOut = new float[3];
+    private final float[] mReferenceRotation = new float[9];
+    private final float[] mRelativeRotation = new float[9];
 
     private float mReferenceTiltXDeg = 0f;
     private float mReferenceTiltYDeg = 0f;
-    private float mLastTiltXDeg = 0f;
-    private float mLastTiltYDeg = 0f;
     private boolean mFirstSampleReady = false;
 
     private float mFilteredTiltXDeg = 0f;
@@ -97,6 +96,7 @@ public final class SpatialEffectController implements SensorEventListener {
     private float mMaxYPx;
 
     private boolean mResetAnimating = false;
+    private ValueAnimator mResetAnimator;
 
     private final TunerService.Tunable mTunable = (key, newValue) -> {
         if (SPATIAL_SENSITIVITY_KEY.equals(key)) {
@@ -154,7 +154,7 @@ public final class SpatialEffectController implements SensorEventListener {
 
     private void updateSensitivityScale() {
         float s = Math.max(0f, Math.min(100f, (float) mSensitivityPercent)) / 100f;
-        mSensitivityScale = 1.0f - 0.50f * (0.7f * s * s + 0.3f * s);
+        mSensitivityScale = s;
     }
 
     public void setSensitivity(int sensitivityPercent) {
@@ -182,6 +182,11 @@ public final class SpatialEffectController implements SensorEventListener {
         }
         mActive = active;
         if (mActive) {
+            if (mResetAnimator != null) {
+                mResetAnimator.cancel();
+                mResetAnimator = null;
+            }
+            mResetAnimating = false;
             mBgCurrentTransX = 0f;
             mBgCurrentTransY = 0f;
             mFgCurrentTransX = 0f;
@@ -196,6 +201,7 @@ public final class SpatialEffectController implements SensorEventListener {
                 mSubjectView.setTranslationX(0f);
                 mSubjectView.setTranslationY(0f);
             }
+            applyOverscan();
             refreshCachedDisplayRotation();
             startSensing();
         } else {
@@ -206,6 +212,12 @@ public final class SpatialEffectController implements SensorEventListener {
     public void destroy() {
         mActive = false;
         stopSensing();
+        Choreographer.getInstance().removeFrameCallback(mSpringCallback);
+        mFrameScheduled = false;
+        if (mResetAnimator != null) mResetAnimator.cancel();
+        mResetAnimator = null;
+        mResetAnimating = false;
+        resetScale();
         if (mTunerService != null) {
             mTunerService.removeTunable(mTunable);
         }
@@ -263,53 +275,62 @@ public final class SpatialEffectController implements SensorEventListener {
 
     private void stopSensingAndReset() {
         stopSensing();
+        Choreographer.getInstance().removeFrameCallback(mSpringCallback);
+        mFrameScheduled = false;
         mTargetTransX = 0f;
         mTargetTransY = 0f;
+        if (mResetAnimator != null) mResetAnimator.cancel();
+        final float bgX = mBgCurrentTransX;
+        final float bgY = mBgCurrentTransY;
+        final float fgX = mFgCurrentTransX;
+        final float fgY = mFgCurrentTransY;
         mResetAnimating = true;
-        final Runnable onEnd = () -> {
-            mBgCurrentTransX = 0f;
-            mBgCurrentTransY = 0f;
-            mFgCurrentTransX = 0f;
-            mFgCurrentTransY = 0f;
-            mResetAnimating = false;
-        };
-        int pendingAnimations = 0;
-        if (mBackgroundView != null) {
-            pendingAnimations++;
-        }
-        if (mSubjectView != null) {
-            pendingAnimations++;
-        }
-        if (pendingAnimations == 0) {
-            mBgCurrentTransX = 0f;
-            mBgCurrentTransY = 0f;
-            mFgCurrentTransX = 0f;
-            mFgCurrentTransY = 0f;
-            mResetAnimating = false;
-            return;
-        }
-        final int[] remaining = {pendingAnimations};
-        final Runnable sharedEnd = () -> {
-            remaining[0]--;
-            if (remaining[0] <= 0) {
-                onEnd.run();
+        ValueAnimator animator = ValueAnimator.ofFloat(1f, 0f);
+        mResetAnimator = animator;
+        animator.setDuration(RESET_DURATION_MS);
+        animator.addUpdateListener(value -> {
+            float fraction = (float) value.getAnimatedValue();
+            mBgCurrentTransX = bgX * fraction;
+            mBgCurrentTransY = bgY * fraction;
+            mFgCurrentTransX = fgX * fraction;
+            mFgCurrentTransY = fgY * fraction;
+            if (mBackgroundView != null) {
+                mBackgroundView.setTranslationX(mBgCurrentTransX);
+                mBackgroundView.setTranslationY(mBgCurrentTransY);
             }
-        };
-        if (mBackgroundView != null) {
-            mBackgroundView.animate()
-                    .translationX(0f)
-                    .translationY(0f)
-                    .setDuration(RESET_DURATION_MS)
-                    .withEndAction(sharedEnd)
-                    .start();
+            if (mSubjectView != null) {
+                mSubjectView.setTranslationX(mFgCurrentTransX);
+                mSubjectView.setTranslationY(mFgCurrentTransY);
+            }
+        });
+        animator.addListener(new AnimatorListenerAdapter() {
+            @Override
+            public void onAnimationEnd(Animator animation) {
+                if (mResetAnimator != animation) return;
+                mResetAnimator = null;
+                mResetAnimating = false;
+                if (!mActive) resetScale();
+            }
+        });
+        animator.start();
+    }
+
+    private void applyOverscan() {
+        for (View view : new View[] {mBackgroundView, mSubjectView}) {
+            if (view == null || view.getWidth() == 0 || view.getHeight() == 0) continue;
+            float scale = Math.max(1f + 2f * mMaxXPx * FOREGROUND_MULTIPLIER / view.getWidth(),
+                    1f + 2f * mMaxYPx * FOREGROUND_MULTIPLIER / view.getHeight());
+            view.setScaleX(scale);
+            view.setScaleY(scale);
         }
-        if (mSubjectView != null) {
-            mSubjectView.animate()
-                    .translationX(0f)
-                    .translationY(0f)
-                    .setDuration(RESET_DURATION_MS)
-                    .withEndAction(sharedEnd)
-                    .start();
+    }
+
+    private void resetScale() {
+        for (View view : new View[] {mBackgroundView, mSubjectView}) {
+            if (view != null) {
+                view.setScaleX(1f);
+                view.setScaleY(1f);
+            }
         }
     }
 
@@ -342,9 +363,40 @@ public final class SpatialEffectController implements SensorEventListener {
         if (mSensorMode == SENSOR_MODE_GAME_ROTATION_VECTOR
                 || mSensorMode == SENSOR_MODE_ROTATION_VECTOR) {
             SensorManager.getRotationMatrixFromVector(mRotationMatrix, event.values);
-            SensorManager.getOrientation(mRotationMatrix, mOrientationOut);
-            rawTiltXDeg = extractTiltX(mOrientationOut);
-            rawTiltYDeg = extractTiltY(mOrientationOut);
+            if (!mFirstSampleReady) {
+                System.arraycopy(mRotationMatrix, 0, mReferenceRotation, 0, 9);
+            }
+            for (int row = 0; row < 3; row++) {
+                for (int column = 0; column < 3; column++) {
+                    float value = 0f;
+                    for (int axis = 0; axis < 3; axis++) {
+                        value += mReferenceRotation[axis * 3 + row]
+                                * mRotationMatrix[axis * 3 + column];
+                    }
+                    mRelativeRotation[row * 3 + column] = value;
+                }
+            }
+            float x = (float) Math.toDegrees(
+                    Math.atan2(mRelativeRotation[2], mRelativeRotation[8]));
+            float y = (float) Math.toDegrees(
+                    Math.atan2(-mRelativeRotation[5], mRelativeRotation[8]));
+            switch (mCachedDisplayRotation) {
+                case Surface.ROTATION_90:
+                    rawTiltXDeg = -y;
+                    rawTiltYDeg = x;
+                    break;
+                case Surface.ROTATION_180:
+                    rawTiltXDeg = -x;
+                    rawTiltYDeg = -y;
+                    break;
+                case Surface.ROTATION_270:
+                    rawTiltXDeg = y;
+                    rawTiltYDeg = -x;
+                    break;
+                default:
+                    rawTiltXDeg = x;
+                    rawTiltYDeg = y;
+            }
         } else {
             rawTiltXDeg = extractAccelTiltX(event.values);
             rawTiltYDeg = extractAccelTiltY(event.values);
@@ -354,24 +406,11 @@ public final class SpatialEffectController implements SensorEventListener {
             mFilteredTiltYDeg = rawTiltYDeg;
             mReferenceTiltXDeg = rawTiltXDeg;
             mReferenceTiltYDeg = rawTiltYDeg;
-            mLastTiltXDeg = rawTiltXDeg;
-            mLastTiltYDeg = rawTiltYDeg;
             mFirstSampleReady = true;
             return;
         }
         mFilteredTiltXDeg += LOW_PASS_ALPHA * (rawTiltXDeg - mFilteredTiltXDeg);
         mFilteredTiltYDeg += LOW_PASS_ALPHA * (rawTiltYDeg - mFilteredTiltYDeg);
-
-        float speedX = Math.abs(mFilteredTiltXDeg - mLastTiltXDeg);
-        float speedY = Math.abs(mFilteredTiltYDeg - mLastTiltYDeg);
-        mLastTiltXDeg = mFilteredTiltXDeg;
-        mLastTiltYDeg = mFilteredTiltYDeg;
-
-        float speed = (float) Math.hypot(speedX, speedY);
-        float adaptAlpha = speed < STABLE_SPEED_THRESHOLD ? ADAPT_ALPHA_STABLE : ADAPT_ALPHA_MOVING;
-
-        mReferenceTiltXDeg += adaptAlpha * (mFilteredTiltXDeg - mReferenceTiltXDeg);
-        mReferenceTiltYDeg += adaptAlpha * (mFilteredTiltYDeg - mReferenceTiltYDeg);
 
         float deltaTiltX = mFilteredTiltXDeg - mReferenceTiltXDeg;
         float deltaTiltY = mFilteredTiltYDeg - mReferenceTiltYDeg;
@@ -393,32 +432,6 @@ public final class SpatialEffectController implements SensorEventListener {
         mTargetTransY = clamp(normalizedY * effMaxY, -mMaxYPx, mMaxYPx);
 
         scheduleFrame();
-    }
-
-    private float extractTiltX(float[] orientation) {
-        switch (mCachedDisplayRotation) {
-            case Surface.ROTATION_90:
-                return (float) Math.toDegrees(-orientation[1]);
-            case Surface.ROTATION_180:
-                return (float) Math.toDegrees(-orientation[2]);
-            case Surface.ROTATION_270:
-                return (float) Math.toDegrees(orientation[1]);
-            default:
-                return (float) Math.toDegrees(orientation[2]);
-        }
-    }
-
-    private float extractTiltY(float[] orientation) {
-        switch (mCachedDisplayRotation) {
-            case Surface.ROTATION_90:
-                return (float) Math.toDegrees(orientation[2]);
-            case Surface.ROTATION_180:
-                return (float) Math.toDegrees(-orientation[1]);
-            case Surface.ROTATION_270:
-                return (float) Math.toDegrees(-orientation[2]);
-            default:
-                return (float) Math.toDegrees(orientation[1]);
-        }
     }
 
     private float extractAccelTiltX(float[] values) {
