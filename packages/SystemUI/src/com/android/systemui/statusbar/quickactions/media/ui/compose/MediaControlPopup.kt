@@ -159,13 +159,18 @@ fun MediaControlPopup(
     } else 0f
     fun action(value: MediaAction?, fallback: String): OneUiPlayerAction? = value?.let {
         OneUiPlayerAction(it.contentDescription?.toString()?.takeIf(String::isNotBlank) ?: fallback,
-            it.action?.let { runnable -> { runnable.run() } })
+            it.action?.let { runnable -> { runnable.run() } },
+            it.icon?.let { drawable -> UiIcon.Loaded(drawable, null) })
     }
     val seekable = model.canBeScrubbed && model.seekTo != null && model.durationMs > 0L
     OneUiDynamicPlayer(
         title = model.songName?.toString().orEmpty(),
         artist = model.artistName?.toString().orEmpty(),
         artwork = model.artworkIcon ?: model.appIcon,
+        appIcon = model.appIcon,
+        deviceName = model.deviceName,
+        leadingAction = action(model.customActions.getOrNull(0), ""),
+        trailingAction = action(model.customActions.getOrNull(1), ""),
         playing = model.isPlaying,
         previous = action(model.previousAction, stringResource(R.string.controls_media_button_prev)),
         playPause = action(model.playOrPause, stringResource(

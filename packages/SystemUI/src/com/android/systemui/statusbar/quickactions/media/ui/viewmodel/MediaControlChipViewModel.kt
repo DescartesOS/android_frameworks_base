@@ -74,8 +74,8 @@ constructor(
 
         val contentDescription = model.appName?.let { ContentDescription.Loaded(description = it) }
         val defaultIcon =
-            model.artworkIcon
-                ?: model.appIcon
+            model.appIcon
+                ?: model.artworkIcon
                 ?: Icon.Resource(
                     resId = com.android.internal.R.drawable.ic_audio_media,
                     contentDescription = contentDescription,

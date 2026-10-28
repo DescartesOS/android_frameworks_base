@@ -340,6 +340,7 @@ private fun MediaDataModel.toMediaControlState(
             ?: notifActions.firstOrNull { it.isPlayOrPauseAction() }
             ?: notifActions.getOrNull(1)
 
+    val customActionsForPlayer = listOf(playbackStateActions?.custom0, playbackStateActions?.custom1)
     return MediaControlState(
         model =
             MediaControlChipModel(
@@ -347,9 +348,11 @@ private fun MediaDataModel.toMediaControlState(
                 appIcon = appIcon,
                 artworkIcon = background ?: appIcon,
                 appName = appName,
+                deviceName = outputDevice?.name?.toString(),
                 artistName = subtitle,
                 songName = title,
                 playOrPause = playOrPauseAction,
+                customActions = customActionsForPlayer,
                 nextAction = nextAction,
                 previousAction = previousAction,
                 openApp =
@@ -411,6 +414,7 @@ private fun MediaData.toMediaControlState(
             ?: notifActions.firstOrNull { it.isPlayOrPauseAction() }
             ?: notifActions.getOrNull(1)
 
+    val customActionsForPlayer = listOf(semanticActions?.custom0, semanticActions?.custom1)
     return MediaControlState(
         model =
             MediaControlChipModel(
@@ -418,9 +422,11 @@ private fun MediaData.toMediaControlState(
                 appIcon = appIcon,
                 artworkIcon = artworkIcon,
                 appName = app,
+                deviceName = device?.name?.toString(),
                 artistName = artist,
                 songName = song,
                 playOrPause = playOrPauseAction,
+                customActions = customActionsForPlayer,
                 nextAction = nextAction,
                 previousAction = previousAction,
                 openApp = openApp,
