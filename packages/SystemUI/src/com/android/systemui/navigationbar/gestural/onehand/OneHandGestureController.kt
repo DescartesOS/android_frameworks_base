@@ -26,6 +26,8 @@ import com.android.systemui.shared.system.InputMonitorCompat
 import com.android.systemui.statusbar.policy.FlashlightController
 import com.android.systemui.statusbar.policy.KeyguardStateController
 import com.android.systemui.statusbar.CommandQueue
+import com.android.wm.shell.onehanded.OneHanded
+import java.util.Optional
 import javax.inject.Inject
 import kotlin.math.abs
 
@@ -35,6 +37,7 @@ class OneHandGestureController @Inject constructor(
     private val commandQueue: CommandQueue,
     private val flashlightController: FlashlightController,
     private val keyguardStateController: KeyguardStateController,
+    private val oneHanded: Optional<OneHanded>,
 ) : CoreStartable {
     private val handler = Handler(Looper.getMainLooper())
     private val windowManager = context.getSystemService(WindowManager::class.java)
@@ -304,7 +307,13 @@ class OneHandGestureController @Inject constructor(
                     AudioManager.USE_DEFAULT_STREAM_TYPE, AudioManager.FLAG_SHOW_UI)
                 15 -> audio.adjustSuggestedStreamVolume(AudioManager.ADJUST_LOWER,
                     AudioManager.USE_DEFAULT_STREAM_TYPE, AudioManager.FLAG_SHOW_UI)
-
+                16 -> oneHanded.ifPresent { controller ->
+                    Settings.Secure.putIntForUser(context.contentResolver,
+                        Settings.Secure.ONE_HANDED_MODE_ENABLED, 1, UserHandle.USER_CURRENT)
+                    Settings.Secure.putIntForUser(context.contentResolver,
+                        Settings.Secure.SWIPE_BOTTOM_TO_NOTIFICATION_ENABLED, 0, UserHandle.USER_CURRENT)
+                    controller.startOneHanded()
+                }
             }
         } catch (e: Exception) { Log.w("OneHandGestures", "Action failed", e) }
     }
