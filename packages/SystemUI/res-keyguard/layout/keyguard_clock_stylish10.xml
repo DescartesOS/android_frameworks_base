@@ -23,7 +23,7 @@
             android:includeFontPadding="false"
             android:tag="text1|nolineheight"
             android:textColor="#FFFFFF"
-            android:textSize="18sp"
+            android:textSize="30sp"
             android:textStyle="bold" />
 
     </FrameLayout>

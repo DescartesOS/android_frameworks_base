@@ -123,7 +123,7 @@
                 android:includeFontPadding="false"
                 android:tag="text1|nolineheight"
                 android:textColor="#FFFFFF"
-                android:textSize="14sp"
+                android:textSize="34sp"
                 android:textStyle="bold" />
 
         </LinearLayout>
