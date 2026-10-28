@@ -16,6 +16,8 @@
 
 package com.android.systemui.statusbar.quickactions.ui.compose
 
+import com.android.systemui.common.ui.compose.OneUiFontFamily
+import androidx.compose.foundation.basicMarquee
 import android.view.DisplayCutout
 import android.view.View
 import android.view.HapticFeedbackConstants
@@ -175,7 +177,7 @@ fun StatusBarDynamicIslandChip(
         modifier =
             modifier
                 .then(boundsModifier)
-                .defaultMinSize(minHeight = 32.dp * heightScale)
+                .defaultMinSize(minHeight = (if (isMediaChip) 22.dp else 32.dp) * heightScale)
                 .widthIn(
                     min = if (isStartAnchored) startGap else (compactWidth ?: 0.dp),
                     max = (compactWidth ?: (CompactIslandMaxWidth * widthScale)) + startGap,
@@ -185,7 +187,7 @@ fun StatusBarDynamicIslandChip(
                     if (isStartAnchored) transformOrigin = TransformOrigin(0f, 0.5f)
                 }
                 .clip(chipShape)
-                .background(Color.Black)
+                .background(if (isMediaChip) Color(0x99545A5C) else Color.Black)
                 .border(width = 1.dp, color = chipOutline, shape = chipShape)
                 .combinedClickable(
                     onClick = hapticOnTap,
@@ -194,8 +196,8 @@ fun StatusBarDynamicIslandChip(
                 .padding(
                     start = if (isStartAnchored) startGap else 10.dp * widthScale,
                     end = if (isStartAnchored) 8.dp * widthScale else 12.dp * widthScale,
-                    top = 7.dp * heightScale,
-                    bottom = 7.dp * heightScale,
+                    top = (if (isMediaChip) 2.dp else 7.dp) * heightScale,
+                    bottom = (if (isMediaChip) 2.dp else 7.dp) * heightScale,
                 )
                 .graphicsLayer { alpha = collapseState.contentAlpha },
         horizontalArrangement =
@@ -228,38 +230,28 @@ fun StatusBarDynamicIslandChip(
 
         viewModel.chipText
             ?.takeIf {
-                !isMediaChip &&
-                    viewModel.popupContent !is PopupContentModel.ScreenRecord &&
+                viewModel.popupContent !is PopupContentModel.ScreenRecord &&
                     !hasInlineTimer &&
                     it.isNotBlank()
             }
             ?.let { text ->
                 Text(
                     text = text,
-                    style = MaterialTheme.typography.labelLarge,
+                    style = if (isMediaChip) MaterialTheme.typography.labelSmall.copy(fontFamily = OneUiFontFamily)
+                        else MaterialTheme.typography.labelLarge,
                     color = chipContentColor,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
                     modifier =
                         Modifier.widthIn(
                             max = if (isStartAnchored) minOf(maxTextWidth, 88.dp) else maxTextWidth
-                        ),
+                        ).then(if (isMediaChip) Modifier.basicMarquee() else Modifier),
                 )
             }
 
         when (val popupContent = viewModel.popupContent) {
             is PopupContentModel.Media -> {
-                val artworkDrawable =
-                    remember(popupContent.model.artworkIcon) {
-                        (popupContent.model.artworkIcon as? IconModel.Loaded)?.drawable
-                    }
-                if (popupContent.model.isPlaying) {
-                    AudioReactiveBars(
-                        isPlaying = true,
-                        color = chipContentColor,
-                        artworkDrawable = artworkDrawable,
-                    )
-                } else if (pageCount > 1) {
+                if (pageCount > 1 && !popupContent.model.isPlaying) {
                     SwipeHint(color = chipContentColor.copy(alpha = 0.72f))
                 }
             }

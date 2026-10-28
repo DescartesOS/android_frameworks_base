@@ -38,4 +38,6 @@ data class MediaControlChipModel(
     val packageName: String? = null,
     val lyrics: String? = null,
     val syncedLyrics: String? = null,
+    val customActions: List<MediaAction?> = emptyList(),
+    val deviceName: String? = null,
 )
