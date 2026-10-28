@@ -505,6 +505,8 @@ class ClockStyle @JvmOverloads constructor(
     private fun isNoColorClock(style: Int): Boolean = NO_COLOR_CLOCKS.contains(style)
 
     companion object {
+        fun galleryLayouts(): IntArray = CLOCK_LAYOUTS.copyOf()
+
         private val CLOCK_LAYOUTS = intArrayOf(
             0,
             R.layout.keyguard_clock_oos,            // 1
