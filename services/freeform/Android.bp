@@ -21,7 +21,7 @@ java_library_static {
     libs: ["services.core"],
     static_libs: [
         "kotlinx_coroutines",
-        "lmofreeform-server",
+        "descartesfreeform-server",
     ],
     jarjar_rules: "jarjar-rules.txt",
 }
