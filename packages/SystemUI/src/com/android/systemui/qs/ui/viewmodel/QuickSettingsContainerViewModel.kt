@@ -26,6 +26,7 @@ import com.android.systemui.media.remedia.domain.interactor.MediaInteractor
 import com.android.systemui.media.remedia.ui.compose.MediaUiBehavior
 import com.android.systemui.media.remedia.ui.viewmodel.MediaCarouselVisibility
 import com.android.systemui.media.remedia.ui.viewmodel.MediaViewModel
+import com.android.systemui.qs.composefragment.ColorOSHostDeps
 import com.android.systemui.qs.panels.ui.viewmodel.DetailsViewModel
 import com.android.systemui.qs.panels.ui.viewmodel.EditModeViewModel
 import com.android.systemui.qs.panels.ui.viewmodel.toolbar.EditModeButtonViewModel
@@ -59,6 +60,7 @@ constructor(
     mediaInRowInLandscapeViewModelFactory: MediaInRowInLandscapeViewModel.Factory,
     @ShadeDisplayAware shadeDisplayTypeRepository: DisplayTypeRepository,
     qsPanels: Optional<QsPanels>,
+    val colorOSDeps: ColorOSHostDeps,
     private val shadeWindowController: NotificationShadeWindowController,
 ) : HydratedActivatable() {
 

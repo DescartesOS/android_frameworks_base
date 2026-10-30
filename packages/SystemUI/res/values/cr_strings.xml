@@ -314,4 +314,6 @@
 
     <!-- Blur QS tile -->
     <string name="quick_settings_blur_label">Blur</string>
+    <!-- ColorOS QS media card empty state -->
+    <string name="qs_coloros_no_media">No media playing</string>
 </resources>

@@ -7653,7 +7653,8 @@ public final class Settings {
         public static final String QQS_TILES_ROWS = "qqs_tiles_rows";
 
         /**
-         * Whether to use classic QS panel style for tiles
+         * QS panel style: 0 for default, 1 for classic and 5 for ColorOS 17
+         * (other ROM-specific styles may use the remaining values)
          * @hide
          */
         public static final String QS_PANEL_STYLE = "qs_panel_style";
@@ -7663,6 +7664,13 @@ public final class Settings {
          * @hide
          */
         public static final String QS_TILE_LABEL_HIDE = "qs_tile_label_hide";
+
+        /**
+         * Whether the media card of the ColorOS QS panel style shows the album art over the
+         * whole card (1) or as a thumbnail at the top left (0)
+         * @hide
+         */
+        public static final String QS_COLOROS_MEDIA_ART_FILL = "qs_coloros_media_art_fill";
 
         /**
          * Select tile shape for classic QS panel style

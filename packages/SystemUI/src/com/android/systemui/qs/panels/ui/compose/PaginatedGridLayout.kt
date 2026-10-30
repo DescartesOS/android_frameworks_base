@@ -16,6 +16,7 @@
 
 package com.android.systemui.qs.panels.ui.compose
 
+import android.provider.Settings
 import androidx.compose.foundation.layout.Arrangement.spacedBy
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
@@ -29,6 +30,7 @@ import androidx.compose.foundation.pager.PagerState
 import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.rememberUpdatedState
@@ -45,14 +47,18 @@ import com.android.compose.animation.scene.ContentScope
 import com.android.compose.modifiers.padding
 import com.android.systemui.common.ui.compose.PagerDots
 import com.android.systemui.compose.modifiers.sysuiResTag
-import androidx.compose.runtime.CompositionLocalProvider
-import androidx.compose.runtime.compositionLocalOf
 import com.android.systemui.development.ui.compose.BuildNumber
 import com.android.systemui.development.ui.viewmodel.BuildNumberViewModel
 import com.android.systemui.lifecycle.rememberViewModel
+import com.android.systemui.qs.footer.ui.compose.rememberSystemSettingEnabled
 import com.android.systemui.qs.panels.dagger.PaginatedBaseLayoutType
 import com.android.systemui.qs.panels.ui.compose.Dimensions.FooterHeight
 import com.android.systemui.qs.panels.ui.compose.Dimensions.InterPageSpacing
+import com.android.systemui.qs.panels.ui.compose.infinitegrid.ColorOSGridColumns
+import com.android.systemui.qs.panels.ui.compose.infinitegrid.ColorOSGridFooterHeight
+import com.android.systemui.qs.panels.ui.compose.infinitegrid.ColorOSGridHeadroom
+import com.android.systemui.qs.panels.ui.compose.infinitegrid.LocalColorOSGridRows
+import com.android.systemui.qs.panels.ui.compose.infinitegrid.LocalColorOSQsStyle
 import com.android.systemui.qs.panels.ui.compose.toolbar.EditModeButton
 import com.android.systemui.qs.panels.ui.viewmodel.PaginatedGridViewModel
 import com.android.systemui.qs.panels.ui.viewmodel.TileViewModel
@@ -60,7 +66,7 @@ import com.android.systemui.qs.panels.ui.viewmodel.toolbar.EditModeButtonViewMod
 import com.android.systemui.res.R
 import javax.inject.Inject
 
-val LocalIsPaginatedGrid = compositionLocalOf { false }
+val LocalIsPaginatedGrid = androidx.compose.runtime.compositionLocalOf { false }
 
 class PaginatedGridLayout
 @Inject
@@ -69,7 +75,7 @@ constructor(
     @PaginatedBaseLayoutType private val delegateGridLayout: PaginatableGridLayout,
 ) : GridLayout by delegateGridLayout {
     @Composable
-        override fun ContentScope.TileGrid(
+    override fun ContentScope.TileGrid(
         tiles: List<TileViewModel>,
         modifier: Modifier,
         listening: () -> Boolean,
@@ -80,15 +86,7 @@ constructor(
     ) {
         if (columnsOverride != null || forceLargeTiles) {
             with(delegateGridLayout) {
-                TileGrid(
-                    tiles = tiles,
-                    modifier = modifier,
-                    listening = listening,
-                    enableRevealEffect = enableRevealEffect,
-                    belowTiles = belowTiles,
-                    columnsOverride = columnsOverride,
-                    forceLargeTiles = forceLargeTiles,
-                )
+                TileGrid(tiles, modifier, listening, enableRevealEffect, belowTiles, columnsOverride, forceLargeTiles)
             }
             return
         }
@@ -101,10 +99,17 @@ constructor(
                 delegateGridLayout.viewModelFactory.create()
             }
 
-        val rows = integerResource(R.integer.quick_settings_paginated_grid_num_rows)
+        // The ColorOS style shows every grid tile as a 1-column round tile, so pages are plain
+        // chunks of rows x columns, with fewer rows so the panel does not need to scroll.
+        val colorOSStyle = LocalColorOSQsStyle.current
+        val rows = if (colorOSStyle) LocalColorOSGridRows.current else viewModel.rows
         val pages =
-            remember(tiles, rows, *delegateGridViewModel.pageKeys) {
-                delegateGridViewModel.splitIntoPages(tiles, rows)
+            remember(tiles, rows, colorOSStyle, *delegateGridViewModel.pageKeys) {
+                if (colorOSStyle) {
+                    tiles.chunked(rows * ColorOSGridColumns)
+                } else {
+                    delegateGridViewModel.splitIntoPages(tiles, rows)
+                }
             }
 
         val pagerState = rememberPagerState(0) { pages.size }
@@ -135,7 +140,12 @@ constructor(
                 } else {
                     0.dp
                 }
-            val contentPadding = PaddingValues(horizontal = contentPaddingValue)
+            val contentPadding =
+                PaddingValues(
+                    start = contentPaddingValue,
+                    end = contentPaddingValue,
+                    top = if (colorOSStyle) ColorOSGridHeadroom else 0.dp,
+                )
             val nestedScrollConnection =
                 remember(viewModel) {
                     object : NestedScrollConnection {
@@ -166,32 +176,30 @@ constructor(
                 CompositionLocalProvider(LocalIsPaginatedGrid provides true) {
                     with(delegateGridLayout) {
                         TileGrid(
-                            tiles = page,
-                            modifier = Modifier,
-                            columnsOverride = columnsOverride,
-                            forceLargeTiles = forceLargeTiles,
-                            listening = listening,
+                        tiles = page,
+                        modifier = Modifier,
+                        listening = listening,
                             enableRevealEffect = false,
+                            belowTiles = belowTiles,
+                            columnsOverride = if (colorOSStyle) ColorOSGridColumns else null,
+                            forceLargeTiles = forceLargeTiles,
                         )
                     }
                 }
             }
-            belowTiles()
-            if (columnsOverride == null && !forceLargeTiles) {
-                FooterBar(
-                    buildNumberViewModelFactory = viewModel.buildNumberViewModelFactory,
-                    pagerState = pagerState,
-                    showArrowsInPager = viewModel.showArrowsInPagerDots,
-                    editButtonViewModelFactory = viewModel.editModeButtonViewModelFactory,
-                    isVisible = { listening() && layoutState.isIdle() },
-                )
-            }
+            FooterBar(
+                buildNumberViewModelFactory = viewModel.buildNumberViewModelFactory,
+                pagerState = pagerState,
+                showArrowsInPager = viewModel.showArrowsInPagerDots,
+                editButtonViewModelFactory = viewModel.editModeButtonViewModelFactory,
+                isVisible = { listening() && layoutState.isIdle() },
+            )
         }
     }
 }
 
 private object Dimensions {
-    val FooterHeight = 48.dp
+    val FooterHeight = ColorOSGridFooterHeight
     val InterPageSpacing = 16.dp
 }
 
@@ -203,6 +211,8 @@ private fun FooterBar(
     editButtonViewModelFactory: EditModeButtonViewModel.Factory,
     isVisible: () -> Boolean = { true },
 ) {
+    val showEdit by rememberSystemSettingEnabled(Settings.System.QS_FOOTER_SHOW_EDIT)
+
     val editButtonViewModel =
         rememberViewModel(traceName = "PaginatedGridLayout-editButtonViewModel") {
             editButtonViewModelFactory.create()
@@ -235,7 +245,9 @@ private fun FooterBar(
         )
         Row(Modifier.weight(1f)) {
             Spacer(modifier = Modifier.weight(1f))
-            EditModeButton(viewModel = editButtonViewModel, isVisible = isVisible())
+            if (showEdit) {
+                EditModeButton(viewModel = editButtonViewModel, isVisible = isVisible())
+            }
         }
     }
 }

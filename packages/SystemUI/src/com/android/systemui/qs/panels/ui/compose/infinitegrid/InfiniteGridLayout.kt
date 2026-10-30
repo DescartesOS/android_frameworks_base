@@ -16,11 +16,11 @@
 
 package com.android.systemui.qs.panels.ui.compose.infinitegrid
 
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.wrapContentWidth
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.layout.Column
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.compositionLocalOf
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
@@ -31,6 +31,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalResources
 import androidx.compose.ui.res.dimensionResource
+import androidx.compose.ui.unit.Dp
+import androidx.compose.ui.unit.dp
 import androidx.compose.ui.util.fastMap
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.android.compose.animation.scene.ContentScope
@@ -40,10 +42,8 @@ import com.android.systemui.haptics.msdl.qs.TileHapticsViewModel
 import com.android.systemui.lifecycle.rememberViewModel
 import com.android.systemui.penguin.LocalQsPanels
 import com.android.systemui.qs.panels.shared.model.SizedTileImpl
+import com.android.systemui.qs.panels.ui.compose.BounceableInfo
 import com.android.systemui.qs.panels.ui.compose.EditTileListState
-import android.provider.Settings
-import com.android.systemui.qs.panels.ui.compose.LocalIsPaginatedGrid
-import com.android.systemui.penguin.LocalQsPanels
 import com.android.systemui.qs.panels.ui.compose.PaginatableGridLayout
 import com.android.systemui.qs.panels.ui.compose.TileListener
 import com.android.systemui.qs.panels.ui.compose.bounceableInfo
@@ -60,16 +60,47 @@ import com.android.systemui.res.R
 import com.android.systemui.shade.shared.flag.DualShadeFlag
 import javax.inject.Inject
 import kotlinx.coroutines.launch
-import androidx.compose.foundation.layout.wrapContentWidth
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.requiredHeight
-import androidx.compose.ui.Alignment
-import androidx.compose.ui.unit.dp
-import com.android.systemui.development.ui.compose.BuildNumber
-import com.android.systemui.development.ui.viewmodel.BuildNumberViewModel
 
+/** Gap between tiles and rows in the ColorOS Quick Settings style (ColorOS 17). */
+val ColorOSGap = 16.dp
+
+/**
+ * Gap between the rows of round icon tiles in the ColorOS style. The label lives inside the tile
+ * cell, so ColorOS rows are packed much closer than the 16dp used between the wide cards.
+ */
+val ColorOSIconRowGap = 4.dp
+
+/**
+ * Gap between the rows of round icon tiles in the ColorOS style: the tight [ColorOSIconRowGap] with
+ * the labels in the cells, the [ColorOSGap] of the wide cards without them.
+ */
+fun colorOSIconRowGap(labelsHidden: Boolean): Dp =
+    if (labelsHidden) ColorOSGap else ColorOSIconRowGap
+
+/**
+ * Round tiles per page in the ColorOS Quick Settings style. Fewer rows than stock so the whole
+ * panel fits without vertical scrolling; extra tiles go to the next page (swipe sideways).
+ */
+const val ColorOSGridRows = 3
+const val ColorOSGridColumns = 4
+
+/** Fewest rows of round tiles per page the ColorOS panel falls back to on a short screen. */
+const val ColorOSMinGridRows = 2
+
+/**
+ * Rows of round tiles per page in the ColorOS panel. The panel lowers it from [ColorOSGridRows]
+ * when the screen is too short for all of them.
+ */
+internal val LocalColorOSGridRows = compositionLocalOf { ColorOSGridRows }
+
+/** Height of the pager footer (build number or data usage, page dots, edit button). */
+val ColorOSGridFooterHeight = 48.dp
+
+/**
+ * Room above the first row of round tiles inside the pager, so what a tile draws outside its
+ * bounds is not clipped by the pager.
+ */
+val ColorOSGridHeadroom = 4.dp
 
 @SysUISingleton
 class InfiniteGridLayout
@@ -80,11 +111,10 @@ constructor(
     override val viewModelFactory: InfiniteGridViewModel.Factory,
     private val textFeedbackContentViewModelFactory: TextFeedbackContentViewModel.Factory,
     private val tileHapticsViewModelFactory: TileHapticsViewModel.Factory,
-    private val buildNumberViewModelFactory: BuildNumberViewModel.Factory,
 ) : PaginatableGridLayout {
 
     @Composable
-        override fun ContentScope.TileGrid(
+    override fun ContentScope.TileGrid(
         tiles: List<TileViewModel>,
         modifier: Modifier,
         listening: () -> Boolean,
@@ -107,107 +137,118 @@ constructor(
         val columns = columnsOverride ?: viewModel.columnsWithMediaViewModel.columns
         val largeTilesSpan = viewModel.columnsWithMediaViewModel.largeSpan
         val largeTiles by viewModel.iconTilesViewModel.largeTilesState
-        val panelTileStyle = LocalQsPanels.current?.panels?.tileStyle()
-        val roundIconTiles =
-            panelTileStyle?.roundIconTiles == true &&
-                !forceLargeTiles &&
-                (columnsOverride == null || columnsOverride == 1)
-        // Tiles or largeTiles may be updated while this is composed, so listen to any changes
+        val colorOSStyle = LocalColorOSQsStyle.current
         val roundGrid =
-            LocalQsPanels.current?.panels?.tileStyle()?.roundIconTiles == true &&
-                !forceLargeTiles &&
-                (columnsOverride == null || columnsOverride == 1)
+            !colorOSStyle && !forceLargeTiles &&
+                (columnsOverride == null || columnsOverride == 1) &&
+                LocalQsPanels.current?.panels?.tileStyle()?.roundIconTiles == true
+        // Tiles or largeTiles may be updated while this is composed, so listen to any changes
         val sizedTiles =
-            remember(tiles, largeTiles, largeTilesSpan, forceLargeTiles, columns, roundGrid) {
+            remember(tiles, largeTiles, largeTilesSpan, columns, forceLargeTiles, roundGrid, colorOSStyle) {
                 tiles.map {
-                    SizedTileImpl(
-                        it,
-                        if (forceLargeTiles) largeTilesSpan.coerceAtMost(columns)
-                        else if (roundGrid) 1
-                        else if (largeTiles.contains(it.spec)) largeTilesSpan.coerceAtMost(columns)
-                        else 1
-                    )
+                    val span = when {
+                        colorOSStyle || roundGrid -> 1
+                        forceLargeTiles -> largeTilesSpan.coerceAtMost(columns)
+                        largeTiles.contains(it.spec) -> largeTilesSpan.coerceAtMost(columns)
+                        else -> 1
+                    }
+                    SizedTileImpl(it, span)
                 }
             }
-        val squishinessState =
-            viewModel.squishinessViewModel.squishiness.collectAsStateWithLifecycle()
-        val applySquish = columnsOverride == null && !forceLargeTiles
-        val squishiness = if (applySquish) squishinessState.value else 1f
+        val squishinessState = viewModel.squishinessViewModel.squishiness.collectAsStateWithLifecycle()
+        val squishiness: () -> Float =
+            if (columnsOverride == null && !forceLargeTiles) ({ squishinessState.value }) else ({ 1f })
         val scope = rememberCoroutineScope()
+
+        val classicStyle = rememberQSPanelStyle()
+        val labelsHidden = rememberQSTileLabelHide()
 
         val bounceables =
             remember(sizedTiles) { List(sizedTiles.size) { BounceableTileViewModel() } }
         val spans by remember(sizedTiles) { derivedStateOf { sizedTiles.fastMap { it.width } } }
-        val isPaginated = LocalIsPaginatedGrid.current
-        val isMainGrid = columnsOverride == null && !forceLargeTiles
-        val tileSquishiness: () -> Float = if (isMainGrid) ({ squishiness }) else ({ 1f })
-
         Column(modifier) {
-            VerticalSpannedGrid(
-                columns = columns,
-                columnSpacing = dimensionResource(R.dimen.qs_tile_margin_horizontal),
-                rowSpacing = dimensionResource(R.dimen.qs_tile_margin_vertical),
-                spans = spans,
-                keys = { sizedTiles[it].tile.spec },
-                modifier = Modifier,
-            ) { spanIndex, column, isFirstInColumn, isLastInColumn ->
-                val it = sizedTiles[spanIndex]
+        VerticalSpannedGrid(
+            columns = columns,
+            columnSpacing =
+                if (colorOSStyle) ColorOSGap
+                else dimensionResource(R.dimen.qs_tile_margin_horizontal),
+            rowSpacing =
+                if (colorOSStyle) colorOSIconRowGap(labelsHidden)
+                else dimensionResource(R.dimen.qs_tile_margin_vertical),
+            spans = spans,
+            keys = { sizedTiles[it].tile.spec },
+            modifier = Modifier,
+        ) { spanIndex, column, isFirstInColumn, isLastInColumn ->
+            val it = sizedTiles[spanIndex]
 
-                Element(
-                    it.tile.spec.toElementKey(),
-                    if (roundGrid) Modifier.fillMaxWidth().wrapContentWidth() else Modifier,
-                ) {
-                    Tile(
-                        tile = it.tile,
-                        iconOnly =
-                            if (forceLargeTiles) false
-                            else columnsOverride == 1 || roundGrid || iconTilesViewModel.isIconTile(it.tile.spec),
-                        squishiness = tileSquishiness,
-                        isHeaderTile = !isMainGrid,
-                        tileHapticsViewModelFactory = tileHapticsViewModelFactory,
-                        coroutineScope = scope,
-                        bounceableInfo =
-                            bounceables.bounceableInfo(
-                                it,
-                                index = spanIndex,
-                                column = column,
-                                columns = columns,
-                                isFirstInRow = isFirstInColumn,
-                                isLastInRow = isLastInColumn,
-                            ),
-                        detailsViewModel = detailsViewModel,
-                        isVisible = listening,
-                        requestToggleTextFeedback = textFeedbackViewModel::requestShowFeedback,
-                        enableRevealEffect = enableRevealEffect,
-                    )
-                }
+            Element(it.tile.spec.toElementKey(), Modifier) {
+                Tile(
+                    tile = it.tile,
+                    iconOnly =
+                        colorOSStyle || columnsOverride == 1 || roundGrid || classicStyle ||
+                            iconTilesViewModel.isIconTile(it.tile.spec),
+                    squishiness = squishiness,
+                    tileHapticsViewModelFactory = tileHapticsViewModelFactory,
+                    coroutineScope = scope,
+                    bounceableInfo =
+                        bounceables.bounceableInfo(
+                            it,
+                            index = spanIndex,
+                            column = column,
+                            columns = columns,
+                            isFirstInRow = isFirstInColumn,
+                            isLastInRow = isLastInColumn,
+                        ),
+                    detailsViewModel = detailsViewModel,
+                    isVisible = listening,
+                    requestToggleTextFeedback = textFeedbackViewModel::requestShowFeedback,
+                    enableRevealEffect = enableRevealEffect,
+                )
             }
-
-            belowTiles()
-            if (!isPaginated && isMainGrid) {
-                Row(
-                    modifier = Modifier.requiredHeight(48.dp).fillMaxWidth(),
-                    verticalAlignment = Alignment.CenterVertically,
-                ) {
-                    BuildNumber(viewModelFactory = buildNumberViewModelFactory)
-                }
-            }
+        }
+        belowTiles()
         }
 
         TileListener(tiles, listening)
     }
 
+    /**
+     * ColorOS style: draws a single wide tile outside the grid (used for the fixed Wi-Fi, mobile
+     * data and Bluetooth slots of the ColorOS Quick Settings layout). The caller is responsible
+     * for making the tile listen, e.g. with [TileListener].
+     */
     @Composable
-    override fun TileSizing(
-        content: @Composable (largeTiles: Set<TileSpec>, resize: (TileSpec, Boolean) -> Unit) -> Unit
+    fun ContentScope.ColorOSWideTile(
+        tile: TileViewModel,
+        listening: () -> Boolean,
+        modifier: Modifier = Modifier,
     ) {
-        val viewModel =
-            rememberViewModel(traceName = "InfiniteGridLayout.TileSizing") {
-                viewModelFactory.create()
+        val context = LocalContext.current
+        val textFeedbackViewModel =
+            rememberViewModel(traceName = "InfiniteGridLayout.ColorOSWideTile", key = context) {
+                textFeedbackContentViewModelFactory.create(context)
             }
-        val largeTiles by viewModel.iconTilesViewModel.largeTilesState
-        content(largeTiles) { spec, large ->
-            viewModel.iconTilesViewModel.resize(spec, toIcon = !large)
+        val scope = rememberCoroutineScope()
+        val bounceable = remember(tile) { BounceableTileViewModel() }
+        Element(tile.spec.toElementKey(), modifier) {
+            Tile(
+                tile = tile,
+                iconOnly = false,
+                squishiness = { 1f },
+                tileHapticsViewModelFactory = tileHapticsViewModelFactory,
+                coroutineScope = scope,
+                bounceableInfo =
+                    BounceableInfo(
+                        bounceable = bounceable,
+                        previousTile = null,
+                        nextTile = null,
+                        bounceEnd = false,
+                    ),
+                detailsViewModel = detailsViewModel,
+                isVisible = listening,
+                requestToggleTextFeedback = textFeedbackViewModel::requestShowFeedback,
+                enableRevealEffect = false,
+            )
         }
     }
 
@@ -238,7 +279,6 @@ constructor(
             }
         val scrollState = rememberScrollState()
         val coroutineScope = rememberCoroutineScope()
-        val editContext = LocalContext.current
         val dialogDelegate =
             rememberViewModel("InfiniteGridLayout.EditTileGrid") {
                 viewModel.resetDialogDelegateFactory.create {
@@ -262,25 +302,17 @@ constructor(
         val largeTilesSpan = columnsViewModel.largeSpan
         val largeTiles by viewModel.iconTilesViewModel.largeTilesState
 
-        val edit = LocalQsPanels.current?.panels?.editMode
-        val editLargeTiles =
-            remember(largeTiles, edit) { largeTiles + (edit?.elementSpecs ?: emptySet()) }
-        val fullWidthSpecs = edit?.fullWidthSpecs() ?: emptySet()
         val currentTiles by rememberUpdatedState(tiles.filter { it.isCurrent })
         val listState =
-            remember(columns, largeTilesSpan, fullWidthSpecs) {
+            remember(columns, largeTilesSpan) {
                 EditTileListState(
                     currentTiles,
-                    editLargeTiles,
+                    largeTiles,
                     columns = columns,
                     largeTilesSpan = largeTilesSpan,
-                    fullWidthSpecs = fullWidthSpecs,
-                    edit = edit,
                 )
             }
-        LaunchedEffect(currentTiles, editLargeTiles) {
-            listState.updateTiles(currentTiles, editLargeTiles)
-        }
+        LaunchedEffect(currentTiles, largeTiles) { listState.updateTiles(currentTiles, largeTiles) }
 
         DefaultEditTileGrid(
             listState = listState,
@@ -310,9 +342,7 @@ constructor(
                     dialogDelegate.showDialog()
                 }
                 is EditAction.ResizeTile -> {
-                    if (edit?.resize(editContext, action.tileSpec, action.toIcon) != true) {
-                        iconTilesViewModel.resize(action.tileSpec, action.toIcon)
-                    }
+                    iconTilesViewModel.resize(action.tileSpec, action.toIcon)
                 }
                 is EditAction.SetTiles -> {
                     onSetTiles(action.tileSpecs)

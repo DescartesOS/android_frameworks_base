@@ -42,7 +42,10 @@ import com.android.systemui.brightness.ui.compose.ContainerColors
 import com.android.systemui.compose.modifiers.sysuiResTag
 import com.android.systemui.media.remedia.ui.compose.Media
 import com.android.systemui.media.remedia.ui.compose.MediaPresentationStyle
+import com.android.systemui.qs.composefragment.ColorOSHostContent
+import com.android.systemui.qs.composefragment.LocalColorOSHostDeps
 import com.android.systemui.qs.composefragment.ui.GridAnchor
+import com.android.systemui.qs.panels.ui.compose.infinitegrid.rememberQSColorOSStyle
 import com.android.systemui.qs.panels.ui.compose.TileGrid
 import com.android.systemui.qs.shared.ui.QuickSettings.Elements
 import com.android.systemui.qs.ui.viewmodel.QuickSettingsContainerViewModel
@@ -62,6 +65,12 @@ fun ContentScope.QuickSettingsContent(
     if (penguin != null) {
         CompositionLocalProvider(LocalQsPanels provides QsPanelsHost(penguin, viewModel)) {
             with(penguin) { Content(viewModel, mediaInRow, modifier, mediaSquishiness) }
+        }
+        return
+    }
+    if (rememberQSColorOSStyle()) {
+        CompositionLocalProvider(LocalColorOSHostDeps provides viewModel.colorOSDeps) {
+            ColorOSHostContent(viewModel, modifier)
         }
         return
     }
