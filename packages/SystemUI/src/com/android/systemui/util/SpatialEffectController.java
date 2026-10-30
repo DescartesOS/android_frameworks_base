@@ -38,13 +38,13 @@ public final class SpatialEffectController implements SensorEventListener {
 
     private static final int SENSOR_DELAY = SensorManager.SENSOR_DELAY_GAME;
 
-    private static final float LOW_PASS_ALPHA = 0.15f;
-    private static final float DEAD_ZONE_DEGREES = 0.2f;
-    private static final float MAX_TILT_DEGREES = 12.0f;
-    private static final float MAX_X_DP = 40f;
-    private static final float MAX_Y_DP = 32f;
-    private static final float BACKGROUND_MULTIPLIER = -0.35f;
-    private static final float FOREGROUND_MULTIPLIER = 0.75f;
+    private static final float LOW_PASS_ALPHA = 0.25f;
+    private static final float DEAD_ZONE_DEGREES = 0.1f;
+    private static final float MAX_TILT_DEGREES = 4.0f;
+    private static final float MAX_X_DP = 72f;
+    private static final float MAX_Y_DP = 56f;
+    private static final float BACKGROUND_MULTIPLIER = -0.6f;
+    private static final float FOREGROUND_MULTIPLIER = 0.9f;
     private static final float SPRING_FACTOR = 0.16f;
     private static final float SETTLE_THRESHOLD_PX = 0.25f;
     private static final long RESET_DURATION_MS = 300;
