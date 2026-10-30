@@ -16,6 +16,7 @@ import android.os.*
 import android.provider.Settings
 import android.util.Log
 import android.view.*
+import android.view.animation.DecelerateInterpolator
 import android.view.accessibility.AccessibilityManager
 import com.android.internal.util.ScreenshotHelper
 import com.android.systemui.CoreStartable
@@ -235,8 +236,13 @@ class OneHandGestureController @Inject constructor(
     private fun finish() {
         active = false; claimed = false; fired = false
         handler.removeCallbacks(longPress)
-        arrow?.let { removeOverlay(it) }
-        arrow = null
+        arrow?.let { view ->
+            arrow = null
+            view.animate().cancel()
+            view.animate().alpha(0f).scaleX(0.82f).scaleY(0.82f)
+                .setDuration(130).setInterpolator(DecelerateInterpolator())
+                .withEndAction { removeOverlay(view) }.start()
+        }
     }
 
     private fun removeOverlay(view: View) {
@@ -274,9 +280,14 @@ class OneHandGestureController @Inject constructor(
         arrow = Arrow(context).also {
             it.direction = direction
             it.mirror = !left
+            it.alpha = 0f
+            it.scaleX = 0.78f
+            it.scaleY = 0.78f
             windowManager.addView(it, layout(size, size,
                 if (left) dp(8).toInt() else bounds.width() - size - dp(8).toInt(),
                 (startY - size / 2).toInt().coerceIn(0, bounds.height() - size)))
+            it.animate().alpha(1f).scaleX(1f).scaleY(1f)
+                .setDuration(190).setInterpolator(DecelerateInterpolator()).start()
         }
     }
 
