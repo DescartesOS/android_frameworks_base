@@ -957,7 +957,8 @@ static void nativeSetBlurRegions(JNIEnv* env, jclass clazz, jlong transactionObj
                                               .left = static_cast<int>(left),
                                               .top = static_cast<int>(top),
                                               .right = static_cast<int>(right),
-                                              .bottom = static_cast<int>(bottom)});
+                                              .bottom = static_cast<int>(bottom),
+                                              .material = static_cast<int32_t>(region[14])});
     }
 
     transaction->setBlurRegions(ctrl, blurRegionVector);
