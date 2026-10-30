@@ -54,6 +54,31 @@ public final class BackgroundBlurDrawable extends Drawable {
     private static final String TAG = BackgroundBlurDrawable.class.getSimpleName();
     private static final boolean DEBUG = Log.isLoggable(TAG, Log.DEBUG);
 
+    /** The region is blurred and nothing else. */
+    public static final int MATERIAL_NONE = 0;
+    /** ColorOS glass of a tile that is off, in the dark theme. */
+    public static final int MATERIAL_TILE_DARK = 1;
+    /** ColorOS glass of a tile that is on, in the dark theme. */
+    public static final int MATERIAL_TILE_ACTIVE_DARK = 2;
+    /** ColorOS glass of a tile that is off, in the light theme. */
+    public static final int MATERIAL_TILE_LIGHT = 3;
+    /** ColorOS glass of a tile that is on, in the light theme. */
+    public static final int MATERIAL_TILE_ACTIVE_LIGHT = 4;
+    /** ColorOS glass of a panel, in the dark theme. Drawn before the other materials. */
+    public static final int MATERIAL_PANEL_DARK = 5;
+    /** ColorOS glass of a panel, in the light theme. Drawn before the other materials. */
+    public static final int MATERIAL_PANEL_LIGHT = 6;
+    /** ColorOS glass of a card, in the dark theme. */
+    public static final int MATERIAL_CARD_DARK = 7;
+    /** ColorOS glass of a card, in the light theme. */
+    public static final int MATERIAL_CARD_LIGHT = 8;
+    /** ColorOS glass of a heads up, in the dark theme. */
+    public static final int MATERIAL_HEADS_UP_DARK = 9;
+    /** ColorOS glass of a heads up, in the light theme. */
+    public static final int MATERIAL_HEADS_UP_LIGHT = 10;
+    /** Neutral glass of a dock. */
+    public static final int MATERIAL_DOCK = 11;
+
     private final Aggregator mAggregator;
     private final RenderNode mRenderNode;
     private final Paint mPaint = new Paint();
@@ -65,7 +90,7 @@ public final class BackgroundBlurDrawable extends Drawable {
     // Confined to UiThread. The values are copied into a BlurRegion, which lives on
     // RenderThread to avoid interference with UiThread updates.
     private int mBlurRadius;
-    private int mMaterial;
+    private int mMaterial = MATERIAL_NONE;
     private float mCornerRadiusTLX;
 
     private float mCornerRadiusTLY;
@@ -159,14 +184,6 @@ public final class BackgroundBlurDrawable extends Drawable {
         mPaint.setXfermode(xfermode);
     }
 
-    public void setMaterial(int material) {
-        if (mMaterial != material) {
-            mMaterial = material;
-            invalidateSelf();
-            mAggregator.onBlurDrawableUpdated(this);
-        }
-    }
-
     /**
      * Blur radius in pixels.
      */
@@ -176,6 +193,25 @@ public final class BackgroundBlurDrawable extends Drawable {
             invalidateSelf();
             mAggregator.onBlurDrawableUpdated(this);
         }
+    }
+
+    /**
+     * Sets the glass the region is drawn with by SurfaceFlinger, one of the {@code MATERIAL_*}
+     * values. {@link #MATERIAL_NONE} is the plain blur, which is what a region has by default.
+     */
+    public void setMaterial(int material) {
+        if (mMaterial != material) {
+            mMaterial = material;
+            invalidateSelf();
+            mAggregator.onBlurDrawableUpdated(this);
+        }
+    }
+
+    /**
+     * Returns the glass the region is drawn with.
+     */
+    public int getMaterial() {
+        return mMaterial;
     }
 
     /**
@@ -273,6 +309,7 @@ public final class BackgroundBlurDrawable extends Drawable {
     public String toString() {
         return "BackgroundBlurDrawable{"
             + "blurRadius=" + mBlurRadius
+            + ", material=" + mMaterial
             + ", corners={" + mCornerRadiusTLX
             + "," + mCornerRadiusTLY
             + "," + mCornerRadiusTRX
@@ -506,6 +543,7 @@ public final class BackgroundBlurDrawable extends Drawable {
      */
     public static final class BlurRegion {
         public final int blurRadius;
+        public final int material;
         public final float cornerRadiusTLX;
         public final float cornerRadiusTRX;
         public final float cornerRadiusTRY;
@@ -516,11 +554,11 @@ public final class BackgroundBlurDrawable extends Drawable {
         public final float cornerRadiusBRY;
         public final float alpha;
         public final Rect rect;
-        public final int material;
 
         BlurRegion(BackgroundBlurDrawable drawable) {
             alpha = drawable.mAlpha / 255f;
             blurRadius = drawable.mBlurRadius;
+            material = drawable.mMaterial;
             cornerRadiusTLX = drawable.mCornerRadiusTLX;
             cornerRadiusTLY = drawable.mCornerRadiusTLY;
             cornerRadiusTRX = drawable.mCornerRadiusTRX;
@@ -530,7 +568,6 @@ public final class BackgroundBlurDrawable extends Drawable {
             cornerRadiusBRX = drawable.mCornerRadiusBRX;
             cornerRadiusBRY = drawable.mCornerRadiusBRY;
             rect = drawable.mRect;
-            material = drawable.mMaterial;
         }
 
         /**
@@ -560,6 +597,7 @@ public final class BackgroundBlurDrawable extends Drawable {
         public String toString() {
             return "BlurRegion{"
                     + "blurRadius=" + blurRadius
+                    + ", material=" + material
                     + ", corners={" + cornerRadiusTLX
                     + "," + cornerRadiusTLY
                     + "," + cornerRadiusTRX
