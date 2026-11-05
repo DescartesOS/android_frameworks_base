@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+     SPDX-FileCopyrightText: Evolution X
+     SPDX-License-Identifier: Apache-2.0
+-->
+<resources>
+    <!-- Mobile data enable confirmation dialog: "Don't ask me again" checkbox row -->
+
+    <!-- Notification counter -->
+
+    <!-- NothingOS style Quick Settings -->
+    <color name="nothing_qs_surface">#ff262626</color>
+    <color name="nothing_qs_active">#ffffffff</color>
+    <color name="nothing_qs_slider_fill">#ffe2e2e2</color>
+    <color name="nothing_qs_alert">#ffd71921</color>
+    <color name="nothing_qs_divider">#33ffffff</color>
+    <color name="nothing_qs_divider_on_active">#33000000</color>
+    <color name="nothing_qs_slider_icon_on_fill">#ff1e1e1e</color>
+    <color name="nothing_qs_icon_circle">#ff383838</color>
+</resources>
