@@ -45,6 +45,9 @@ object LockscreenMediaExpansion {
     var expanded by mutableStateOf(false)
         private set
 
+    var artEnabled by mutableStateOf(false)
+        private set
+
     val progress = Animatable(0f)
 
     var supported by mutableStateOf(false)
@@ -74,10 +77,10 @@ object LockscreenMediaExpansion {
         get() = progress.value.coerceIn(0f, 1f)
 
     val target: Boolean
-        get() = enabled && expanded && supported && mediaVisible && artwork != null
+        get() = enabled && artEnabled && expanded && supported && mediaVisible && artwork != null
 
     fun toggle() {
-        if (!enabled || !supported || artwork == null) return
+        if (!enabled || !artEnabled || !supported || artwork == null) return
         persistExpanded(!expanded)
     }
 
@@ -112,6 +115,13 @@ object LockscreenMediaExpansion {
                         0,
                         UserHandle.USER_CURRENT,
                     ) != 0
+                artEnabled =
+                    Settings.System.getIntForUser(
+                        contentResolver,
+                        Settings.System.LS_MEDIA_ART_ENABLED,
+                        0,
+                        UserHandle.USER_CURRENT,
+                    ) != 0
                 expanded =
                     Settings.System.getIntForUser(
                         contentResolver,
@@ -134,6 +144,7 @@ object LockscreenMediaExpansion {
             read()
             listOf(
                     Settings.System.LS_MEDIA_EXPAND,
+                    Settings.System.LS_MEDIA_ART_ENABLED,
                     Settings.System.LS_MEDIA_EXPANDED,
                     Settings.System.LS_MEDIA_MOTION_ART,
                 )
