@@ -152,6 +152,7 @@ private const val QS_PANEL_STYLE_CLASSIC = 1
 private const val QS_PANEL_STYLE_COLOROS = 2
 private const val QS_PANEL_STYLE_NOTHING = 3
 private const val QS_PANEL_STYLE_HYPEROS = 4
+private const val QS_PANEL_STYLE_AXION = 5
 
 /** Nothing-style Quick Settings (monochrome pills, circles and 2x2 quad tiles on a 4 column grid). */
 internal val LocalNothingQsStyle = compositionLocalOf { false }
@@ -1294,6 +1295,46 @@ fun rememberQSHyperOSStyle(): Boolean {
     }
 
     return hyperOSStyleEnabled
+}
+
+@Composable
+fun rememberQSAxionStyle(): Boolean {
+    val context = LocalContext.current
+    val contentResolver = context.contentResolver
+
+    fun readAxionStyleEnabled(): Boolean {
+        return try {
+            Settings.System.getIntForUser(
+                contentResolver, Settings.System.QS_PANEL_STYLE, 0,
+                UserHandle.USER_CURRENT
+            ) == QS_PANEL_STYLE_AXION
+        } catch (_: Throwable) {
+            false
+        }
+    }
+
+    var axionStyleEnabled by remember { mutableStateOf(readAxionStyleEnabled()) }
+
+    DisposableEffect(contentResolver) {
+        val observer = object : ContentObserver(null) {
+            override fun onChange(selfChange: Boolean) {
+                context.mainExecutor.execute {
+                    axionStyleEnabled = readAxionStyleEnabled()
+                }
+            }
+        }
+
+        contentResolver.registerContentObserver(
+            Settings.System.getUriFor(Settings.System.QS_PANEL_STYLE),
+            false, observer, UserHandle.USER_ALL
+        )
+
+        onDispose {
+            contentResolver.unregisterContentObserver(observer)
+        }
+    }
+
+    return axionStyleEnabled
 }
 
 /** Largest cell of the Nothing style grid on this screen, or unspecified for no limit. */
