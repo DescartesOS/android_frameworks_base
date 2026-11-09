@@ -77,6 +77,10 @@ object ShadeColors {
 
     @JvmStatic
     fun shadePanel(context: Context, blurSupported: Boolean, withScrim: Boolean): Int {
+        if (Settings.System.getIntForUser(context.contentResolver,
+                Settings.System.QS_PANEL_STYLE, 0, UserHandle.USER_CURRENT) == 6) {
+            return if (isNight(context)) Color.rgb(48, 52, 55) else Color.rgb(240, 242, 242)
+        }
         val s = spec(style(context), isNight(context))
             ?: return aospShadePanel(context, blurSupported, withScrim)
 

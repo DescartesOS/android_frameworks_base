@@ -301,5 +301,6 @@ public class SystemSettingsValidators {
                 System.VEHICLE_MOTION_CUES_SENSITIVITY, new InclusiveFloatRangeValidator(5f, 35f));
         VALIDATORS.put(
                 System.VEHICLE_MOTION_CUES_DOT_COUNT, new InclusiveIntegerRangeValidator(6, 24));
+        VALIDATORS.put(System.QS_PANEL_STYLE, new InclusiveIntegerRangeValidator(0, 6));
     }
 }

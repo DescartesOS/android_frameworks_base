@@ -273,6 +273,7 @@ constructor(
 
     /** Whether the ColorOS QS panel style is on, which gives the expanded header one row. */
     private var colorOSStyle = false
+    private var motorolaStyle = false
 
     private val demoModeReceiver =
         object : DemoMode {
@@ -472,9 +473,12 @@ constructor(
     override fun onTuningChanged(key: String?, value: String?) {
         when (key) {
             QS_PANEL_STYLE -> {
-                val enabled = TunerService.parseInteger(value, 0).let { it == QS_PANEL_STYLE_COLOROS || it == QS_PANEL_STYLE_HYPEROS }
-                if (enabled != colorOSStyle) {
+                val style = TunerService.parseInteger(value, 0)
+                val enabled = style == QS_PANEL_STYLE_COLOROS || style == QS_PANEL_STYLE_HYPEROS
+                val motorola = style == 6
+                if (enabled != colorOSStyle || motorola != motorolaStyle) {
                     colorOSStyle = enabled
+                    motorolaStyle = motorola
                     loadConstraints()
                     updateResources()
                     updateTransition()
@@ -527,7 +531,10 @@ constructor(
             .getConstraintSet(QS_HEADER_CONSTRAINT)
             .load(
                 context,
-                resources.getXml(if (colorOSStyle) R.xml.qs_header_coloros else R.xml.qs_header),
+                resources.getXml(
+                    if (motorolaStyle) R.xml.qs_header_motorola
+                    else if (colorOSStyle) R.xml.qs_header_coloros else R.xml.qs_header
+                ),
             )
         header
             .getConstraintSet(LARGE_SCREEN_HEADER_CONSTRAINT)
@@ -550,7 +557,7 @@ constructor(
             // The ColorOS header hides the clock in the expanded state, so the carrier name
             // starts at the edge.
             val maxClockWidth =
-                if (colorOSStyle) {
+                if (colorOSStyle || motorolaStyle) {
                     0
                 } else {
                     (clock.width * resources.getFloat(R.dimen.qqs_expand_clock_scale)).toInt()

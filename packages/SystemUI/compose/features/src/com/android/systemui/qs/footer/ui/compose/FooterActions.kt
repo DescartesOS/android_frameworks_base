@@ -72,6 +72,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.layout.layout
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.dimensionResource
@@ -79,6 +80,7 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.constrainHeight
 import androidx.compose.ui.unit.constrainWidth
@@ -176,7 +178,11 @@ fun rememberSystemSettingEnabled(
 
 /** The Quick Settings footer actions row. */
 @Composable
-fun FooterActions(viewModel: FooterActionsViewModel, modifier: Modifier = Modifier) {
+fun FooterActions(
+    viewModel: FooterActionsViewModel,
+    modifier: Modifier = Modifier,
+    motorolaStyle: Boolean = false,
+) {
     val context = LocalContext.current
 
     // Collect alphas as soon as we are composed, even when not visible.
@@ -218,7 +224,7 @@ fun FooterActions(viewModel: FooterActionsViewModel, modifier: Modifier = Modifi
     }
 
     val backgroundColor =
-        if (!notificationShadeBlur()) colorAttr(R.attr.underSurface) else Color.Transparent
+        if (!motorolaStyle && !notificationShadeBlur()) colorAttr(R.attr.underSurface) else Color.Transparent
     val backgroundAlphaValue = if (!notificationShadeBlur()) backgroundAlpha::value else ({ 0f })
     val contentColor = MaterialTheme.colorScheme.onSurface
     val backgroundTopRadius = dimensionResource(R.dimen.qs_corner_radius)
@@ -231,7 +237,7 @@ fun FooterActions(viewModel: FooterActionsViewModel, modifier: Modifier = Modifi
             )
         }
 
-    val horizontalPadding = dimensionResource(R.dimen.qs_content_horizontal_padding)
+    val horizontalPadding = if (motorolaStyle) 28.dp else dimensionResource(R.dimen.qs_content_horizontal_padding)
     Row(
         modifier
             .fillMaxWidth()
@@ -274,7 +280,7 @@ fun FooterActions(viewModel: FooterActionsViewModel, modifier: Modifier = Modifi
             val textViewModel: FooterTextButtonViewModel? =
                 textFeedback as? TextFeedbackViewModel.LoadedTextFeedback
                     ?: (security ?: foregroundServices)
-            AnimatedFooterTextButton(textViewModel, useModifierBasedExpandable, Modifier.weight(1f))
+            AnimatedFooterTextButton(textViewModel, useModifierBasedExpandable, Modifier.weight(1f), motorolaStyle)
 
             // Only add the foreground services number if text shouldn't be displayed
             ForegroundServicesNumberButton(
@@ -296,6 +302,8 @@ fun FooterActions(viewModel: FooterActionsViewModel, modifier: Modifier = Modifi
                     { settings },
                     useModifierBasedExpandable,
                     Modifier.sysuiResTag("settings_button_container"),
+                    motorolaStyle = motorolaStyle,
+                    motorolaIcon = R.drawable.ic_motorola_settings,
                 )
             }
 
@@ -304,6 +312,8 @@ fun FooterActions(viewModel: FooterActionsViewModel, modifier: Modifier = Modifi
                     { viewModel.power },
                     useModifierBasedExpandable,
                     Modifier.sysuiResTag("pm_lite"),
+                    motorolaStyle = motorolaStyle,
+                    motorolaIcon = R.drawable.ic_qs_footer_power,
                 )
             }
         }
@@ -321,6 +331,7 @@ private fun AnimatedFooterTextButton(
     textViewModel: FooterTextButtonViewModel?,
     useModifierBasedExpandable: Boolean,
     modifier: Modifier = Modifier,
+    motorolaStyle: Boolean = false,
 ) {
     val transition = updateTransition(textViewModel?.model)
     val scaleY by transition.animateFloat { if (it == null) FOOTER_TEXT_MINIMUM_SCALE_Y else 1f }
@@ -340,9 +351,9 @@ private fun AnimatedFooterTextButton(
     ) {
         val colors = textButtonColors()
         CircleExpandable(
-            color = colors.background,
-            contentColor = colors.content,
-            borderStroke = colors.border,
+            color = if (motorolaStyle) Color.Transparent else colors.background,
+            contentColor = if (motorolaStyle) motorolaFooterContentColor() else colors.content,
+            borderStroke = if (motorolaStyle) null else colors.border,
             modifier = Modifier.fillMaxWidth().padding(horizontal = 4.dp),
             onClick = onClick,
             useModifierBasedImplementation = useModifierBasedExpandable,
@@ -363,7 +374,7 @@ private fun AnimatedFooterTextButton(
             ) {
                 when (it) {
                     is FooterTextButtonModel.FooterBasicButtonModel -> {
-                        TextButtonContent(it.icon, it.text, showChevron = onClick != null)
+                        TextButtonContent(it.icon, it.text, showChevron = onClick != null, motorolaStyle = motorolaStyle)
                     }
                     is FooterTextButtonModel.FooterForegroundServicesButtonModel -> {
                         TextButtonContent(
@@ -371,6 +382,7 @@ private fun AnimatedFooterTextButton(
                             it.text,
                             showChevron = onClick != null,
                             showNewDot = it.hasNewChanges,
+                            motorolaStyle = motorolaStyle,
                         )
                     }
                     null -> {}
@@ -416,9 +428,11 @@ private fun IconButton(
     model: () -> FooterActionsButtonViewModel?,
     useModifierBasedExpandable: Boolean,
     modifier: Modifier = Modifier,
+    motorolaStyle: Boolean = false,
+    motorolaIcon: Int? = null,
 ) {
     val viewModel = model() ?: return
-    IconButton(viewModel, useModifierBasedExpandable, modifier)
+    IconButton(viewModel, useModifierBasedExpandable, modifier, motorolaStyle, motorolaIcon)
 }
 
 /** A button with an icon. */
@@ -427,16 +441,27 @@ private fun IconButton(
     model: FooterActionsButtonViewModel,
     useModifierBasedExpandable: Boolean,
     modifier: Modifier = Modifier,
+    motorolaStyle: Boolean = false,
+    motorolaIcon: Int? = null,
 ) {
     val colors = buttonColorsForModel(model)
     CircleExpandable(
-        color = colors.background,
+        color = if (motorolaStyle) Color.Transparent else colors.background,
         onClick = model.onClick,
         onLongClick = model.onLongClick,
         modifier = modifier,
         useModifierBasedImplementation = useModifierBasedExpandable,
     ) {
-        FooterIcon(model.icon, Modifier.size(20.dp), colors.icon)
+        if (motorolaStyle && motorolaIcon != null) {
+            Icon(
+                painterResource(motorolaIcon),
+                model.icon.contentDescription?.load(),
+                Modifier.size(24.dp),
+                motorolaFooterContentColor(),
+            )
+        } else {
+            FooterIcon(model.icon, Modifier.size(20.dp), colors.icon)
+        }
     }
 }
 
@@ -604,8 +629,9 @@ private fun TextButtonContent(
     modifier: Modifier = Modifier,
     showNewDot: Boolean = false,
     showChevron: Boolean = false,
+    motorolaStyle: Boolean = false,
 ) {
-    val contentColor = textButtonColors().content
+    val contentColor = if (motorolaStyle) motorolaFooterContentColor() else textButtonColors().content
     Row(
         modifier.padding(horizontal = dimensionResource(R.dimen.qs_footer_padding)),
         verticalAlignment = Alignment.CenterVertically,
@@ -616,6 +642,7 @@ private fun TextButtonContent(
             text,
             Modifier.weight(1f),
             style = MaterialTheme.typography.labelLarge,
+            fontFamily = if (motorolaStyle) FontFamily.Default else null,
             letterSpacing = 0.em,
             color = contentColor,
             maxLines = 1,
@@ -772,3 +799,8 @@ private object FooterActionsDefaults {
             border = null,
         )
 }
+
+@Composable
+private fun motorolaFooterContentColor(): Color =
+    if (MaterialTheme.colorScheme.surface.luminance() < 0.5f) Color(0xFFFAFAFA)
+    else Color(0xFF202424)

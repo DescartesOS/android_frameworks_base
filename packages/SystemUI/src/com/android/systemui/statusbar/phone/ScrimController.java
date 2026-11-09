@@ -1720,6 +1720,11 @@ public class ScrimController implements ViewTreeObserver.OnPreDrawListener, Dump
     }
 
     private int getShadePanelColor() {
+        if (mScrimBehind != null) {
+            mScrimBehind.setMotorolaBackground(Settings.System.getIntForUser(
+                    mContext.getContentResolver(), Settings.System.QS_PANEL_STYLE, 0,
+                    UserHandle.USER_CURRENT) == 6 && isNightMode());
+        }
         if (isColorOSBackdrop() && isNightMode()) {
             // The ColorOS QS panel draws the glass behind the shade itself, a blur region of
             // the panel material, and the color of the scrim on top of it would only dim it.

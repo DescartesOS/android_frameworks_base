@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- SPDX-License-Identifier: Apache-2.0 -->
+<resources>
+    <dimen name="qs_motorola_header_height">102dp</dimen>
+    <string name="qs_motorola_this_phone">This phone</string>
+    <string name="qs_motorola_output">Media output</string>
+    <string name="qs_motorola_media_progress">Playback position</string>
+</resources>

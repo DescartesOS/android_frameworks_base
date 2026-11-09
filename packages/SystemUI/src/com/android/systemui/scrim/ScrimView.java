@@ -23,9 +23,12 @@ import android.content.Context;
 import android.content.res.Resources;
 import android.graphics.Canvas;
 import android.graphics.Color;
+import android.graphics.LinearGradient;
+import android.graphics.Paint;
 import android.graphics.PorterDuff;
 import android.graphics.PorterDuff.Mode;
 import android.graphics.PorterDuffColorFilter;
+import android.graphics.PorterDuffXfermode;
 import android.graphics.Rect;
 import android.graphics.RenderEffect;
 import android.graphics.Shader;
@@ -66,6 +69,10 @@ public class ScrimView extends View {
     private final ColorExtractor.GradientColors mTmpColors = new ColorExtractor.GradientColors();
     private float mViewAlpha = 1.0f;
     private Drawable mDrawable;
+    private boolean mMotorolaBackground;
+    private final Paint mMotorolaPaint = new Paint();
+    private int mMotorolaWidth;
+    private int mMotorolaHeight;
     private PorterDuffColorFilter mColorFilter;
     private String mScrimName;
     private int mTintColor;
@@ -120,8 +127,32 @@ public class ScrimView extends View {
                 ((ScrimDrawable) mDrawable).setShouldUseLargeScreenSize(
                         LargeScreenUtils.shouldUseLargeScreenShadeHeader(res));
             }
-            mDrawable.draw(canvas);
+            if (mMotorolaBackground && mTintColor == Color.rgb(48, 52, 55)) {
+                if (mMotorolaWidth != getWidth() || mMotorolaHeight != getHeight()) {
+                    mMotorolaWidth = getWidth();
+                    mMotorolaHeight = getHeight();
+                    mMotorolaPaint.setShader(new LinearGradient(0, 0, getWidth(), getHeight(),
+                            new int[] {0xFF303234, 0xFF303438, 0xFF292C2F, 0xFF333436},
+                            new float[] {0f, 0.35f, 0.6f, 1f}, Shader.TileMode.CLAMP));
+                    mMotorolaPaint.setXfermode(new PorterDuffXfermode(Mode.SRC_ATOP));
+                }
+                int layer = canvas.saveLayer(null, null);
+                mDrawable.draw(canvas);
+                canvas.drawRect(0, 0, getWidth(), getHeight(), mMotorolaPaint);
+                canvas.restoreToCount(layer);
+            } else {
+                mDrawable.draw(canvas);
+            }
         }
+    }
+
+    public void setMotorolaBackground(boolean enabled) {
+        executeOnExecutor(() -> {
+            if (mMotorolaBackground != enabled) {
+                mMotorolaBackground = enabled;
+                invalidate();
+            }
+        });
     }
 
     @VisibleForTesting

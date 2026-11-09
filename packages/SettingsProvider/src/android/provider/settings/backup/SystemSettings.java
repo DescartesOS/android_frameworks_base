@@ -38,6 +38,7 @@ public class SystemSettings {
 
     private static String[] getSettingsToBackUp() {
         List<String> settings = new ArrayList<>(List.of(
+                Settings.System.QS_PANEL_STYLE,
                 Settings.System.VEHICLE_MOTION_CUES,
                 Settings.System.VEHICLE_MOTION_CUES_DOT_SIZE,
                 Settings.System.VEHICLE_MOTION_CUES_SENSITIVITY,

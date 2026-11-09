@@ -164,6 +164,8 @@ import com.android.systemui.qs.panels.ui.compose.QuickQuickSettings
 import com.android.systemui.qs.panels.ui.compose.TileGrid
 import com.android.systemui.qs.panels.ui.compose.infinitegrid.ColorOSBackdrop
 import com.android.systemui.qs.panels.ui.compose.infinitegrid.InfiniteGridLayout
+import com.android.systemui.qs.QSHost
+import androidx.compose.ui.semantics.clearAndSetSemantics
 import com.android.systemui.qs.panels.ui.compose.infinitegrid.LocalColorOSQsStyle
 import com.android.systemui.qs.panels.ui.compose.infinitegrid.LocalHyperOSQsStyle
 import com.android.systemui.qs.panels.ui.compose.infinitegrid.LocalNothingQsStyle
@@ -248,6 +250,7 @@ constructor(
     @ShadeDisplayAware private val configurationController: ConfigurationController,
     private val infiniteGridLayout: InfiniteGridLayout,
     private val audioVolumeInteractor: AudioVolumeInteractor,
+    private val motorolaQsHost: QSHost,
     private val mediaDataManager: MediaDataManager,
     private val activityStarter: ActivityStarter,
     private val mediaOutputDialogManager: MediaOutputDialogManager,
@@ -292,6 +295,7 @@ constructor(
     private var bottomBarPositionInRoot = IntRect(IntOffset(0, 0), 0)
     private var bottomContentPadding by mutableIntStateOf(0)
     private var colorOSQsStyle by mutableStateOf(false)
+    private var motorolaQsStyle by mutableStateOf(false)
 
     /**
      * Whether the Nothing style draws its sliders inside the tile grid, so the QS scene has no
@@ -357,6 +361,8 @@ constructor(
                         initOnBackPressedDispatcherOwner(this@repeatWhenAttached.lifecycle)
                         setContent {
                             val colorOSStyle = rememberQSColorOSStyle()
+                            val motorolaStyle = rememberMotorolaQsStyle()
+                            SideEffect { motorolaQsStyle = motorolaStyle }
                             SideEffect { colorOSQsStyle = colorOSStyle }
                             val nothingStyle = rememberQSNothingStyle()
                             val hyperOSStyle = rememberQSHyperOSStyle()
@@ -364,6 +370,7 @@ constructor(
                             SideEffect { axQsStyle = axStyle }
                             CompositionLocalProvider(
                                 LocalAxQsStyle provides axStyle,
+                                LocalMotorolaQsStyle provides motorolaStyle,
                                 LocalColorOSQsStyle provides colorOSStyle,
                                 LocalHyperOSQsStyle provides hyperOSStyle,
                                 LocalNothingQsStyle provides nothingStyle,
@@ -508,14 +515,14 @@ constructor(
                             // QQS fades out and the panel fades/slides in.
                             quickQuickSettingsToQuickSettings(
                                 animateTilesExpansion = {
-                                    viewModel.animateTilesExpansion && !colorOSQsStyle
+                                    viewModel.animateTilesExpansion && !colorOSQsStyle && !motorolaQsStyle
                                 },
                                 // The ColorOS panel has its own slider, and the Nothing one draws its
                                 // sliders in the grid, so the QQS one fades out.
                                 fadeOutBrightnessSlider = {
-                                    colorOSQsStyle || nothingSlidersInGrid
+                                    colorOSQsStyle || motorolaQsStyle || nothingSlidersInGrid
                                 },
-                                fadeOutQqsTiles = { colorOSQsStyle },
+                                fadeOutQqsTiles = { colorOSQsStyle || motorolaQsStyle },
                             )
                           }
                         }
@@ -1063,9 +1070,12 @@ constructor(
         // The ColorOS header is taller than the stock one. A large screen header (no qqs padding)
         // is not changed by the style.
         val colorOSHeader = LocalColorOSQsStyle.current && qqsPadding > 0
+        val motorolaHeader = LocalMotorolaQsStyle.current && qqsPadding > 0
         val qsExtraPadding =
             dimensionResource(
-                if (colorOSHeader) {
+                if (motorolaHeader) {
+                    R.dimen.qs_motorola_header_height
+                } else if (colorOSHeader) {
                     R.dimen.qs_coloros_header_height
                 } else {
                     R.dimen.qs_panel_padding_top
@@ -1132,7 +1142,7 @@ constructor(
                             modifier =
                                 Modifier.height {
                                     qqsPadding +
-                                        if (colorOSHeader) 0 else qsExtraPadding.roundToPx()
+                                        if (colorOSHeader || motorolaHeader) 0 else qsExtraPadding.roundToPx()
                                 }
                         )
                         val BrightnessSlider: @Composable () -> Unit = {
@@ -1192,7 +1202,59 @@ constructor(
                                         end = qsHorizontalMargin(),
                                     )
                         ) {
-                            if (LocalColorOSQsStyle.current) {
+                            if (LocalMotorolaQsStyle.current) {
+                                GridAnchor()
+                                val edit = rememberViewModel("MotorolaHeaderEdit") {
+                                    viewModel.editModeButtonViewModelFactory.create()
+                                }
+                                MotorolaQuickSettingsLayout(
+                                    tiles = containerViewModel.tileGridViewModel.tileViewModels,
+                                    qsHost = motorolaQsHost,
+                                    brightnessViewModel = containerViewModel.brightnessSliderViewModel,
+                                    audioVolumeInteractor = audioVolumeInteractor,
+                                    data = if (viewModel.qsMediaVisible) colorOSMediaSessions.current else null,
+                                    listening = isListening,
+                                    onEdit = { edit.onButtonClick() },
+                                    onOpenMedia = { activityStarter.postStartActivityDismissingKeyguard(it) },
+                                    onOutputSwitcher = { data ->
+                                        val intent = data.device?.intent
+                                        if (intent != null) {
+                                            if (intent.isActivity) {
+                                                activityStarter.postStartActivityDismissingKeyguard(intent)
+                                            } else {
+                                                runCatching { intent.send() }
+                                            }
+                                        } else {
+                                            mediaOutputDialogManager.createAndShow(
+                                                data.packageName, true, null,
+                                                UserHandle.getUserHandleForUid(data.appUid),
+                                                data.token, false,
+                                            )
+                                        }
+                                    },
+                                    onOpenConnectivity = { action ->
+                                        activityStarter.postStartActivityDismissingKeyguard(Intent(action), 0)
+                                    },
+                                    modifier = Modifier.align(Alignment.TopCenter).padding(horizontal = 12.dp),
+                                    headerHeight = if (motorolaHeader) qsExtraPadding else 60.dp,
+                                    mediaHost = { hostModifier ->
+                                        if (viewModel.qsMediaVisible) {
+                                            MediaObject(
+                                                mediaHost = viewModel.qsMediaHost,
+                                                modifier = hostModifier.graphicsLayer { alpha = 0f }
+                                                    .clearAndSetSemantics {},
+                                                mediaViewModelFactory = viewModel.mediaViewModelFactory,
+                                                mediaPresentationStyle = MediaPresentationStyle.Compressed,
+                                                onSwipeToDismiss = viewModel::onMediaSwipeToDismiss,
+                                                behavior = viewModel.qsMediaUiBehavior,
+                                                visible = isListening,
+                                                location = com.android.systemui.media.remedia.ui.compose.Media.Location.QS,
+                                                expansion = { 0f },
+                                            )
+                                        }
+                                    },
+                                )
+                            } else if (LocalColorOSQsStyle.current) {
                                 // What is left of the scroller under the header and the padding
                                 // around the panel, for the panel to size itself to.
                                 val density = LocalDensity.current
@@ -1390,7 +1452,10 @@ constructor(
                             Elements.FooterActions,
                             Modifier.sysuiResTag(ResIdTags.qsFooterActions),
                         ) {
-                            FooterActions(viewModel = viewModel.footerActionsViewModel)
+                            FooterActions(
+                                viewModel = viewModel.footerActionsViewModel,
+                                motorolaStyle = LocalMotorolaQsStyle.current,
+                            )
                         }
                     }
                 }
