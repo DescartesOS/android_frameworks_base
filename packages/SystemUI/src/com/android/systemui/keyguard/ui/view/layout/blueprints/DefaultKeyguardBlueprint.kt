@@ -84,7 +84,6 @@ constructor(
 
     override val sections =
         listOfNotNull(
-            lockscreenPlayerSection,
             accessibilityActionsSection,
             defaultIndicationAreaSection,
             defaultIndicationAreaTopSection,
@@ -95,6 +94,7 @@ constructor(
             batteryChargingPopupMenuSection.getOrNull(),
             defaultStatusBarSection,
             defaultNotificationStackScrollLayoutSection,
+            lockscreenPlayerSection,
             aodNotificationIconsSection,
             aodPromotedNotificationSection,
             smartspaceSection,
