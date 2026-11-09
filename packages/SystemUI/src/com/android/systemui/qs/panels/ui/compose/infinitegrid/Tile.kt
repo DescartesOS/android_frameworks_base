@@ -1486,9 +1486,9 @@ data class TileColors(
     val label: Color,
     val secondaryLabel: Color,
     val icon: Color,
-    val outline: Color,
-    val classicLabel: Color,
-    val classicSecondaryLabel: Color,
+    val outline: Color = Color.Transparent,
+    val classicLabel: Color = label,
+    val classicSecondaryLabel: Color = secondaryLabel,
     val backgroundGradient: Brush? = null,
 )
 
