@@ -47,7 +47,6 @@ import com.android.systemui.media.controls.domain.pipeline.interactor.MediaCarou
 import com.android.systemui.media.controls.ui.view.MediaHost
 import com.android.systemui.media.controls.ui.view.MediaHostState
 import com.android.systemui.media.dagger.MediaModule
-import com.android.systemui.keyguard.ui.composable.media.LockscreenMediaExpansion
 import com.android.systemui.media.remedia.shared.flag.MediaControlsInComposeFlag
 import com.android.systemui.media.remedia.ui.compose.Media
 import com.android.systemui.media.remedia.ui.compose.MediaPresentationStyle
@@ -385,7 +384,7 @@ constructor(
                 isBypassNotEnabled &&
                 keyguardOrUserSwitcher &&
                 shouldBeVisibleForSplitShade &&
-                !LockscreenMediaExpansion.enabled
+                !MediaControlsInComposeFlag.isEnabled
         logger.logRefreshMediaPosition(
             reason = reason,
             visible = visible,

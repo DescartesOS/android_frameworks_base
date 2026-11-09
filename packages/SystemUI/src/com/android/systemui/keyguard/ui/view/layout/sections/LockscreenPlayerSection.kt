@@ -33,6 +33,8 @@ import com.android.systemui.keyguard.ui.composable.media.LockscreenExpandedMedia
 import com.android.systemui.keyguard.ui.composable.media.LockscreenMediaCard
 import com.android.systemui.keyguard.ui.composable.media.LockscreenMediaExpansion
 import com.android.systemui.media.controls.domain.pipeline.interactor.MediaCarouselInteractor
+import com.android.systemui.media.remedia.ui.compose.Media
+import com.android.systemui.media.remedia.ui.compose.MediaPresentationStyle
 import com.android.systemui.media.remedia.ui.compose.MediaUiBehavior
 import com.android.systemui.media.remedia.ui.viewmodel.MediaCarouselVisibility
 import com.android.systemui.media.remedia.ui.viewmodel.MediaFalsingSystem
@@ -132,8 +134,7 @@ private fun PlayerCard(
     val onLockscreen by
         mediaCarouselInteractor.isOnLockscreen.collectAsStateWithLifecycle(initialValue = false)
     val dozing by keyguardInteractor.isDozing.collectAsStateWithLifecycle()
-    val visible =
-        LockscreenMediaExpansion.enabled && allowMedia && hasActiveMedia && onLockscreen && !dozing
+    val visible = allowMedia && hasActiveMedia && onLockscreen && !dozing
 
     DisposableEffect(Unit) {
         LockscreenMediaExpansion.supported = true
@@ -156,17 +157,28 @@ private fun PlayerCard(
         (LocalConfiguration.current.screenHeightDp * ART_SLOT_SHARE *
                 LockscreenMediaExpansion.fraction)
             .dp
-    Column(Modifier.fillMaxWidth().padding(horizontal = 16.dp)) {
-        Spacer(
-            Modifier.fillMaxWidth().height(slotHeight).onGloballyPositioned {
-                LockscreenMediaExpansion.artSlotBounds =
-                    Rect(it.positionInWindow(), it.size.toSize())
-            }
-        )
-        LockscreenMediaCard(
+    if (LockscreenMediaExpansion.enabled) {
+        Column(Modifier.fillMaxWidth().padding(horizontal = 16.dp)) {
+            Spacer(
+                Modifier.fillMaxWidth().height(slotHeight).onGloballyPositioned {
+                    LockscreenMediaExpansion.artSlotBounds =
+                        Rect(it.positionInWindow(), it.size.toSize())
+                }
+            )
+            LockscreenMediaCard(
+                viewModelFactory = mediaViewModelFactory,
+                behavior = behavior,
+                modifier = Modifier.fillMaxWidth(),
+            )
+        }
+    } else {
+        Media(
             viewModelFactory = mediaViewModelFactory,
+            presentationStyle = MediaPresentationStyle.Default,
             behavior = behavior,
-            modifier = Modifier.fillMaxWidth(),
+            onDismissed = { mediaCarouselInteractor.onSwipeToDismiss() },
+            modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp),
+            location = Media.Location.LOCKSCREEN,
         )
     }
 }
