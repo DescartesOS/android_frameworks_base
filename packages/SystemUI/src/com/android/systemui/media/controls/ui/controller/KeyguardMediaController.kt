@@ -24,14 +24,26 @@ import android.util.MathUtils
 import android.view.View
 import android.view.ViewGroup
 import androidx.annotation.VisibleForTesting
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.layout.onGloballyPositioned
+import androidx.compose.ui.layout.positionInWindow
 import androidx.compose.ui.platform.ComposeView
+import androidx.compose.ui.platform.LocalConfiguration
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.toSize
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.lifecycleScope
 import androidx.lifecycle.repeatOnLifecycle
@@ -47,6 +59,8 @@ import com.android.systemui.media.controls.domain.pipeline.interactor.MediaCarou
 import com.android.systemui.media.controls.ui.view.MediaHost
 import com.android.systemui.media.controls.ui.view.MediaHostState
 import com.android.systemui.media.dagger.MediaModule
+import com.android.systemui.keyguard.ui.composable.media.LockscreenMediaCard
+import com.android.systemui.keyguard.ui.composable.media.LockscreenMediaExpansion
 import com.android.systemui.media.remedia.shared.flag.MediaControlsInComposeFlag
 import com.android.systemui.media.remedia.ui.compose.Media
 import com.android.systemui.media.remedia.ui.compose.MediaPresentationStyle
@@ -84,6 +98,8 @@ import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.onStart
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+
+private const val ART_SLOT_SHARE = 0.3f
 
 /**
  * Controls the media notifications on the lock screen, handles its visibility and placement -
@@ -200,21 +216,48 @@ constructor(
                     (1f - (fullShadeTransitionProgress / 0.25f)).coerceIn(0f, 1f)
                 }
             }
-            Media(
-                viewModelFactory = mediaViewModelFactory,
-                presentationStyle = MediaPresentationStyle.Default,
-                behavior =
-                    MediaUiBehavior(
-                        carouselVisibility = MediaCarouselVisibility.WhenAnyCardIsActive,
-                        isCarouselScrollFalseTouch = {
-                            falsingSystem.isFalseTouch(Classifier.MEDIA_CAROUSEL_SWIPE)
-                        },
-                    ),
-                onDismissed = { mediaCarouselInteractor.onSwipeToDismiss() },
-                modifier = Modifier.graphicsLayer { alpha = transitionAlpha },
-                visible = { visible },
-                location = Media.Location.LOCKSCREEN,
-            )
+            val behavior =
+                MediaUiBehavior(
+                    carouselVisibility = MediaCarouselVisibility.WhenAnyCardIsActive,
+                    isCarouselScrollFalseTouch = {
+                        falsingSystem.isFalseTouch(Classifier.MEDIA_CAROUSEL_SWIPE)
+                    },
+                )
+            LockscreenMediaExpansion.ObserveSettings()
+            if (LockscreenMediaExpansion.enabled) {
+                DisposableEffect(Unit) {
+                    LockscreenMediaExpansion.supported = true
+                    onDispose { LockscreenMediaExpansion.supported = false }
+                }
+                SideEffect { LockscreenMediaExpansion.mediaVisible = visible }
+                val slotHeight =
+                    (LocalConfiguration.current.screenHeightDp * ART_SLOT_SHARE *
+                            LockscreenMediaExpansion.fraction)
+                        .dp
+                Column(Modifier.graphicsLayer { alpha = transitionAlpha }) {
+                    Spacer(
+                        Modifier.fillMaxWidth().height(slotHeight).onGloballyPositioned {
+                            LockscreenMediaExpansion.artSlotBounds =
+                                Rect(it.positionInWindow(), it.size.toSize())
+                        }
+                    )
+                    LockscreenMediaCard(
+                        viewModelFactory = mediaViewModelFactory,
+                        behavior = behavior,
+                        modifier = Modifier.fillMaxWidth(),
+                    )
+                }
+            } else {
+                Media(
+                    viewModelFactory = mediaViewModelFactory,
+                    presentationStyle = MediaPresentationStyle.Default,
+                    behavior = behavior,
+                    onDismissed = { mediaCarouselInteractor.onSwipeToDismiss() },
+                    modifier = Modifier.graphicsLayer { alpha = transitionAlpha },
+                    visible = { visible },
+                    location = Media.Location.LOCKSCREEN,
+                )
+            }
         }
     }
 

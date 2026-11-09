@@ -39,6 +39,7 @@ import com.android.systemui.keyguard.ui.view.layout.sections.KeyguardSectionsMod
 import com.android.systemui.keyguard.ui.view.layout.sections.KeyguardSliceViewSection
 import com.android.systemui.keyguard.ui.view.layout.sections.KeyguardClockStyleSection
 import com.android.systemui.keyguard.ui.view.layout.sections.KeyguardWeatherViewSection
+import com.android.systemui.keyguard.ui.view.layout.sections.LockscreenPlayerSection
 import com.android.systemui.keyguard.ui.view.layout.sections.SmartspaceSection
 import java.util.Optional
 import javax.inject.Inject
@@ -75,6 +76,7 @@ constructor(
     keyguardWeatherViewSection: KeyguardWeatherViewSection,
     keyguardSliceViewSection: KeyguardSliceViewSection,
     axDynamicBarKeyguardChipSection: AxDynamicBarKeyguardChipSection,
+    lockscreenPlayerSection: LockscreenPlayerSection,
     keyguardClockStyleSection: KeyguardClockStyleSection,
     udfpsAccessibilityOverlaySection: DefaultUdfpsAccessibilityOverlaySection,
 ) : KeyguardBlueprint {
@@ -82,6 +84,7 @@ constructor(
 
     override val sections =
         listOfNotNull(
+            lockscreenPlayerSection,
             accessibilityActionsSection,
             defaultIndicationAreaSection,
             defaultIndicationAreaTopSection,
