@@ -111,6 +111,7 @@ import com.android.systemui.qs.panels.ui.compose.infinitegrid.rememberColorOSGla
 import com.android.systemui.qs.panels.ui.compose.infinitegrid.CommonTileDefaults
 import com.android.systemui.qs.panels.ui.compose.infinitegrid.InfiniteGridLayout
 import com.android.systemui.qs.panels.ui.compose.infinitegrid.LocalColorOSGridRows
+import com.android.systemui.qs.panels.ui.compose.infinitegrid.LocalHyperOSQsStyle
 import com.android.systemui.qs.panels.ui.compose.infinitegrid.LocalColorOSTileSize
 import com.android.systemui.qs.panels.ui.compose.infinitegrid.colorOSIconRowGap
 import com.android.systemui.qs.panels.ui.compose.infinitegrid.colorOSPress
@@ -139,13 +140,15 @@ private val COLOROS_CARD_FALLBACK_SPECS = listOf("cell", "hotspot", "nfc", "cast
  * slot with no tile of its own gets a fallback, which no other slot uses, and stays null when there
  * is none.
  */
-internal fun colorOSCardSlotsOf(present: Set<String>): List<String?> {
+internal fun colorOSCardSlotsOf(present: Set<String>, hyper: Boolean = false): List<String?> {
     val fallbacks = COLOROS_CARD_FALLBACK_SPECS.filter { it in present }.iterator()
     fun fallback(): String? = if (fallbacks.hasNext()) fallbacks.next() else null
     val wifi = COLOROS_WIFI_SPECS.firstOrNull { it in present }
-    val bt = COLOROS_BT_SPECS.firstOrNull { it in present }
-    return listOf(wifi ?: fallback(), bt ?: fallback())
+    val second = (if (hyper) HYPEROS_SECOND_SPECS else COLOROS_BT_SPECS).firstOrNull { it in present }
+    return listOf(wifi ?: fallback(), second ?: fallback())
 }
+
+private val HYPEROS_SECOND_SPECS = listOf("cell")
 
 /**
  * The specs of the tiles the panel pins as cards, the Wi-Fi and Bluetooth ones that are present and
@@ -215,6 +218,7 @@ internal fun colorOSFit(
     availableHeight: Dp,
     labelHeight: Dp,
     iconRowGap: Dp,
+    hyper: Boolean = false,
 ): ColorOSFit {
     if (availableHeight == Dp.Unspecified || availableHeight <= 0.dp) {
         return ColorOSFit(columnSize, ColorOSGridRows, fits = true)
@@ -222,13 +226,13 @@ internal fun colorOSFit(
     for (rows in ColorOSGridRows downTo ColorOSMinGridRows) {
         // Gaps: between the four blocks (3) and inside the media row (1).
         val fixed =
-            ColorOSGap * 4 +
+            ColorOSGap * (if (hyper) 3 else 4) +
                 ColorOSGridTopPadding +
                 ColorOSGridHeadroom +
                 labelHeight * rows +
                 iconRowGap * (rows - 1) +
                 ColorOSGridFooterHeight
-        val tileSize = (availableHeight - fixed) / (4 + rows)
+        val tileSize = (availableHeight - fixed) / ((if (hyper) 3 else 4) + rows)
         if (tileSize >= ColorOSMinTileSize) {
             return ColorOSFit(minOf(columnSize, tileSize), rows, fits = true)
         }
@@ -245,6 +249,8 @@ private const val ColorOSSliderAspect = 2.1f
 
 /** Corner radius of the glass slot behind the media card, playing or idle. */
 private val ColorOSMediaShape = RoundedCornerShape(32.dp)
+
+private val HyperOSMediaShape = RoundedCornerShape(28.dp)
 
 /** The soft light along the top of the glass of the light panel, where there is no blur region. */
 private val ColorOSLightGlassHighlight =
@@ -290,11 +296,13 @@ internal fun ContentScope.ColorOSQuickSettingsLayout(
     onOpenDevices: () -> Unit = {},
 ) {
     val chosen by rememberColorOSPinned()
+    val hyper = LocalHyperOSQsStyle.current
     val pinned =
-        remember(tiles, chosen) {
+        remember(tiles, chosen, hyper) {
             val bySpec = tiles.associateBy { it.spec.spec }
-            val slots = colorOSPinnedOf(bySpec.keys, chosen)
-            slots.cards.map { spec -> spec?.let(bySpec::get) } to slots.pill?.let(bySpec::get)
+            val slots = colorOSPinnedOf(bySpec.keys, chosen, hyper)
+            slots.cards.map { spec -> spec?.let(bySpec::get) } to
+                slots.pill?.takeIf { !hyper }?.let(bySpec::get)
         }
     val fixed = remember(pinned) { pinned.first.filterNotNull() }
     val pillTile = pinned.second
@@ -330,8 +338,8 @@ internal fun ContentScope.ColorOSQuickSettingsLayout(
         val labelHeight = if (labelsHidden) 0.dp else CommonTileDefaults.ClassicLabelHeight
         val iconRowGap = colorOSIconRowGap(labelsHidden)
         val fit =
-            remember(columnSize, availableHeight, labelHeight, iconRowGap) {
-                colorOSFit(columnSize, availableHeight, labelHeight, iconRowGap)
+            remember(columnSize, availableHeight, labelHeight, iconRowGap, hyper) {
+                colorOSFit(columnSize, availableHeight, labelHeight, iconRowGap, hyper)
             }
         SideEffect { onFitChanged(fit.fits) }
         val tileSize = fit.tileSize
@@ -380,7 +388,7 @@ internal fun ContentScope.ColorOSQuickSettingsLayout(
                             .fillMaxHeight()
                             // Playing and idle share the same glass slot, like the other ColorOS
                             // cards, the media card only lays out its content on it.
-                            .glassSurface(glass, ColorOSMediaShape),
+                            .glassSurface(glass, if (hyper) HyperOSMediaShape else ColorOSMediaShape),
                     contentAlignment = Alignment.Center,
                 ) {
                     mediaHost(Modifier.matchParentSize())
@@ -408,7 +416,7 @@ internal fun ContentScope.ColorOSQuickSettingsLayout(
 
             // Row 3: My Devices + ringer switch, as ColorOS 17 has them. The mobile data tile is
                 // one of the round tiles below.
-                Row(
+                if (!hyper) Row(
                     horizontalArrangement = spacedBy(ColorOSGap),
                     modifier = Modifier.colorOSModuleReveal(3, leaving, reveal),
                 ) {
@@ -619,7 +627,8 @@ private fun ColorOSVerticalSlider(
     val currentOnStop by rememberUpdatedState(onStop)
     val currentSnap by rememberUpdatedState(snap)
     val currentOnLongPress by rememberUpdatedState(onLongPress)
-    val shape = RoundedCornerShape(percent = 50)
+    val shape =
+        if (LocalHyperOSQsStyle.current) RoundedCornerShape(28.dp) else RoundedCornerShape(percent = 50)
 
     Box(
         modifier =

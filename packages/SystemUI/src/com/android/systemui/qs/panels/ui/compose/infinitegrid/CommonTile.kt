@@ -171,10 +171,19 @@ internal val ColorOSTileRim =
  */
 internal val ColorOSTileRimLight = SolidColor(Color.White.copy(alpha = 0.95f))
 
+internal val HyperOSTileRim =
+    Brush.linearGradient(
+        0f to Color(0xFFFFFFFF).copy(alpha = 0.90f),
+        0.45f to Color(0xFFFFE2D2).copy(alpha = 0.50f),
+        0.75f to Color(0xFFFFD2BF).copy(alpha = 0.55f),
+        1f to Color(0xFFFFB8A6).copy(alpha = 0.90f),
+    )
+
 /** The rim of ColorOS tiles that are drawn without a blur region, for the theme of the panel. */
 @Composable
 internal fun colorOSTileRim(): Brush =
-    if (MaterialTheme.colorScheme.surface.luminance() < 0.5f) ColorOSTileRim
+    if (LocalHyperOSQsStyle.current) HyperOSTileRim
+    else if (MaterialTheme.colorScheme.surface.luminance() < 0.5f) ColorOSTileRim
     else ColorOSTileRimLight
 
 /**

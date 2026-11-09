@@ -80,6 +80,8 @@ internal val LocalColorOSGlassBlur = compositionLocalOf<ColorOSGlassBlur?> { nul
  */
 private val ColorOSGlassBlurRadius = 22.5.dp
 
+private val HyperOSGlassBlurRadius = 40.dp
+
 /**
  * Overrides the blur radius, in pixels, to match it by eye on a device:
  * `setprop debug.evolution.lg.cos_blur 80`. Unset or 0 keeps [ColorOSGlassBlurRadius]. It is
@@ -247,7 +249,11 @@ internal fun Modifier.colorOSGlassBlur(
     val blur = LocalColorOSGlassBlur.current ?: return this
     val view = LocalView.current
     val region = remember(view) { ColorOSGlassRegion(view) }
-    val defaultRadius = with(LocalDensity.current) { ColorOSGlassBlurRadius.roundToPx() }
+    val hyper = LocalHyperOSQsStyle.current
+    val defaultRadius =
+        with(LocalDensity.current) {
+            (if (hyper) HyperOSGlassBlurRadius else ColorOSGlassBlurRadius).roundToPx()
+        }
     // The part of the element that is in the window, in its own coordinates.
     var visible by remember { mutableStateOf<Rect?>(null) }
 

@@ -41,6 +41,7 @@ object ShadeColors {
 
     /** Value of [Settings.System.QS_PANEL_STYLE] for the ColorOS panel. */
     private const val QS_PANEL_STYLE_COLOROS = 2
+    private const val QS_PANEL_STYLE_HYPEROS = 4
 
     /**
      * All numbers are in CAM16/HCT space (tone = L*, 0..100), so the visual weight of each
@@ -195,7 +196,7 @@ object ShadeColors {
     private fun isColorOSPanel(context: Context): Boolean =
         Settings.System.getIntForUser(
             context.contentResolver, Settings.System.QS_PANEL_STYLE, 0, UserHandle.USER_CURRENT
-        ) == QS_PANEL_STYLE_COLOROS
+        ).let { it == QS_PANEL_STYLE_COLOROS || it == QS_PANEL_STYLE_HYPEROS }
 
     private fun invalidateStyle() {
         styleGeneration++

@@ -225,6 +225,7 @@ public class ScrimController implements ViewTreeObserver.OnPreDrawListener, Dump
     private static final float NOT_INITIALIZED = -1;
     /** Value of {@link Settings.System#QS_PANEL_STYLE} for the ColorOS panel. */
     private static final int QS_PANEL_STYLE_COLOROS = 2;
+    private static final int QS_PANEL_STYLE_HYPEROS = 4;
 
     private ScrimState mState = ScrimState.UNINITIALIZED;
 
@@ -1735,9 +1736,12 @@ public class ScrimController implements ViewTreeObserver.OnPreDrawListener, Dump
      */
     private boolean isColorOSBackdrop() {
         return Flags.notificationShadeBlur() && isBlurCurrentlySupported()
-                && Settings.System.getIntForUser(mContext.getContentResolver(),
-                        Settings.System.QS_PANEL_STYLE, 0, UserHandle.USER_CURRENT)
-                        == QS_PANEL_STYLE_COLOROS;
+                && isColorOSFamilyStyle(Settings.System.getIntForUser(mContext.getContentResolver(),
+                        Settings.System.QS_PANEL_STYLE, 0, UserHandle.USER_CURRENT));
+    }
+
+    private static boolean isColorOSFamilyStyle(int style) {
+        return style == QS_PANEL_STYLE_COLOROS || style == QS_PANEL_STYLE_HYPEROS;
     }
 
     private boolean isNightMode() {

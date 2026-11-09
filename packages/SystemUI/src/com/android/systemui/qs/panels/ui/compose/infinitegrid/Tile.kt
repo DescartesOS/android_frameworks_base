@@ -151,6 +151,7 @@ private val TileViewModel.traceName
 private const val QS_PANEL_STYLE_CLASSIC = 1
 private const val QS_PANEL_STYLE_COLOROS = 2
 private const val QS_PANEL_STYLE_NOTHING = 3
+private const val QS_PANEL_STYLE_HYPEROS = 4
 
 /** Nothing-style Quick Settings (monochrome pills, circles and 2x2 quad tiles on a 4 column grid). */
 internal val LocalNothingQsStyle = compositionLocalOf { false }
@@ -169,6 +170,8 @@ internal val LocalNothingPageSliders = compositionLocalOf<List<NothingSliderItem
 
 /** ColorOS-style Quick Settings (glass tiles, round icon tiles with labels below). */
 internal val LocalColorOSQsStyle = compositionLocalOf { false }
+
+internal val LocalHyperOSQsStyle = compositionLocalOf { false }
 
 private val ColorOSBlue = Color(0xFF0068FF)
 private val ColorOSGreen = Color(0xFF16A34A)
@@ -258,6 +261,7 @@ fun ContentScope.Tile(
             }
 
         val colorOSStyle = LocalColorOSQsStyle.current
+        val hyperOSStyle = LocalHyperOSQsStyle.current
         val nothingStyle = LocalNothingQsStyle.current
         val isQuadTile = nothingStyle && LocalQSQuadTiles.current.contains(tile.spec)
         val tileGradient = rememberQSTileGradient()
@@ -265,7 +269,7 @@ fun ContentScope.Tile(
             if (nothingStyle) {
                 TileDefaults.nothingColorsForState(uiState, isQuadTile)
             } else if (colorOSStyle) {
-                TileDefaults.colorOSColorsForState(uiState, iconOnly, tile.spec.spec)
+                TileDefaults.colorOSColorsForState(uiState, iconOnly, tile.spec.spec, hyperOSStyle)
             } else {
                 TileDefaults.getColorForState(uiState, iconOnly, tileGradient)
             }
@@ -306,6 +310,8 @@ fun ContentScope.Tile(
                     iconOnly -> CircleShape
                     else -> RoundedCornerShape(50)
                 }
+            } else if (hyperOSStyle && !iconOnly) {
+                RoundedCornerShape(28.dp)
             } else if (wantCircle && !classicStyle) {
                 CircleShape
             } else {
@@ -359,7 +365,8 @@ fun ContentScope.Tile(
         val glassPill = colorOSStyle && !classicStyle && glassBlur != null
         // The glass is drawn by SurfaceFlinger and does not follow the alpha of a Compose layer,
         // so the round tile that cannot be used scales the alpha of its own region as well.
-        val colorOSDimmed = colorOSStyle && iconOnly && uiState.visualState == STATE_UNAVAILABLE
+        val colorOSDimmed =
+            colorOSStyle && !hyperOSStyle && iconOnly && uiState.visualState == STATE_UNAVAILABLE
         val tileGlassBlur =
             remember(glassBlur, colorOSDimmed) {
                 if (glassBlur != null && colorOSDimmed) {
@@ -368,6 +375,9 @@ fun ContentScope.Tile(
                     glassBlur
                 }
             }
+        val hyperWhitePill =
+            hyperOSStyle && !iconOnly && uiState.visualState == STATE_ACTIVE &&
+                MaterialTheme.colorScheme.surface.luminance() < 0.5f
         val outerShape = if (wantCircle && !classicStyle) RoundedCornerShape(0.dp) else tileShape
         val outerColor: () -> Color =
             if (wantCircle || classicStyle || glassPill) { { Color.Transparent } }
@@ -408,6 +418,13 @@ fun ContentScope.Tile(
                                     brush = colorOSTileRim(),
                                     shape = tileShape,
                                 )
+                            } else {
+                                Modifier
+                            }
+                        )
+                        .then(
+                            if (hyperWhitePill) {
+                                Modifier.background(ColorOSActiveFill, tileShape)
                             } else {
                                 Modifier
                             }
@@ -1209,7 +1226,7 @@ fun rememberQSColorOSStyle(): Boolean {
             Settings.System.getIntForUser(
                 contentResolver, Settings.System.QS_PANEL_STYLE, 0,
                 UserHandle.USER_CURRENT
-            ) == QS_PANEL_STYLE_COLOROS
+            ).let { it == QS_PANEL_STYLE_COLOROS || it == QS_PANEL_STYLE_HYPEROS }
         } catch (_: Throwable) {
             false
         }
@@ -1239,6 +1256,46 @@ fun rememberQSColorOSStyle(): Boolean {
     return colorOSStyleEnabled
 }
 
+@Composable
+fun rememberQSHyperOSStyle(): Boolean {
+    val context = LocalContext.current
+    val contentResolver = context.contentResolver
+
+    fun readHyperOSStyleEnabled(): Boolean {
+        return try {
+            Settings.System.getIntForUser(
+                contentResolver, Settings.System.QS_PANEL_STYLE, 0,
+                UserHandle.USER_CURRENT
+            ) == QS_PANEL_STYLE_HYPEROS
+        } catch (_: Throwable) {
+            false
+        }
+    }
+
+    var hyperOSStyleEnabled by remember { mutableStateOf(readHyperOSStyleEnabled()) }
+
+    DisposableEffect(contentResolver) {
+        val observer = object : ContentObserver(null) {
+            override fun onChange(selfChange: Boolean) {
+                context.mainExecutor.execute {
+                    hyperOSStyleEnabled = readHyperOSStyleEnabled()
+                }
+            }
+        }
+
+        contentResolver.registerContentObserver(
+            Settings.System.getUriFor(Settings.System.QS_PANEL_STYLE),
+            false, observer, UserHandle.USER_ALL
+        )
+
+        onDispose {
+            contentResolver.unregisterContentObserver(observer)
+        }
+    }
+
+    return hyperOSStyleEnabled
+}
+
 /** Largest cell of the Nothing style grid on this screen, or unspecified for no limit. */
 @Composable
 fun rememberNothingQSMaxCellSize(): Dp {
@@ -1263,7 +1320,11 @@ fun rememberQSTileLabelHide(): Boolean {
             Settings.System.getIntForUser(
                 contentResolver, Settings.System.QS_TILE_LABEL_HIDE, 0,
                 UserHandle.USER_CURRENT
-            ) != 0
+            ) != 0 ||
+                Settings.System.getIntForUser(
+                    contentResolver, Settings.System.QS_PANEL_STYLE, 0,
+                    UserHandle.USER_CURRENT
+                ) == QS_PANEL_STYLE_HYPEROS
         } catch (_: Throwable) {
             false
         }
@@ -1282,6 +1343,10 @@ fun rememberQSTileLabelHide(): Boolean {
 
         contentResolver.registerContentObserver(
             Settings.System.getUriFor(Settings.System.QS_TILE_LABEL_HIDE),
+            false, observer, UserHandle.USER_ALL
+        )
+        contentResolver.registerContentObserver(
+            Settings.System.getUriFor(Settings.System.QS_PANEL_STYLE),
             false, observer, UserHandle.USER_ALL
         )
 
@@ -1478,7 +1543,12 @@ private object TileDefaults {
      */
     @Composable
     @ReadOnlyComposable
-    fun colorOSColorsForState(uiState: TileUiState, iconOnly: Boolean, spec: String): TileColors {
+    fun colorOSColorsForState(
+        uiState: TileUiState,
+        iconOnly: Boolean,
+        spec: String,
+        hyper: Boolean = false,
+    ): TileColors {
         val onSurface = MaterialTheme.colorScheme.onSurface
         val darkPanel = MaterialTheme.colorScheme.surface.luminance() < 0.5f
         val accent =
@@ -1493,7 +1563,9 @@ private object TileDefaults {
         // The icon circle of a pill that is off is a flat, clearly lighter disc than the pill, as in
         // ColorOS. The pill and the round tiles keep the glass.
         val bubbleOff =
-            if (darkPanel) Color.White.copy(alpha = 0.28f) else Color.Black.copy(alpha = 0.06f)
+            if (hyper && !iconOnly) Color.Transparent
+            else if (darkPanel) Color.White.copy(alpha = 0.28f)
+            else Color.Black.copy(alpha = 0.06f)
         val bubbleOn = if (darkPanel) ColorOSActiveFill else accent
         val iconOn = if (darkPanel) accent else Color.White
         // The labels of a dark panel are softer than full white, like in ColorOS.
@@ -1505,29 +1577,31 @@ private object TileDefaults {
                 iconBackground = bubbleOff,
                 label = primary,
                 secondaryLabel = secondary,
-                icon = onSurface,
+                icon = if (hyper && darkPanel) Color.White else onSurface,
                 outline = onSurface,
                 classicLabel = primary,
                 classicSecondaryLabel = secondary,
             )
         return when (uiState.visualState) {
-            STATE_ACTIVE ->
+            STATE_ACTIVE -> {
+                val whitePill = hyper && darkPanel && !iconOnly
                 TileColors(
-                    background = if (iconOnly) bubbleOn else glass,
-                    iconBackground = bubbleOn,
-                    label = primary,
-                    secondaryLabel = secondary,
+                    background = if (iconOnly || whitePill) bubbleOn else glass,
+                    iconBackground = if (whitePill) Color.Transparent else bubbleOn,
+                    label = if (whitePill) Color.Black.copy(alpha = 0.87f) else primary,
+                    secondaryLabel = if (whitePill) Color.Black.copy(alpha = 0.6f) else secondary,
                     icon = iconOn,
                     outline = iconOn,
                     classicLabel = primary,
                     classicSecondaryLabel = secondary,
                 )
+            }
             STATE_INACTIVE -> inactive
             // A round tile that cannot be used keeps the colours of one that is off and is faded
             // as a whole by the caller. The wide tiles keep the greyed out colours, with the icon
             // circle of a pill that is off.
             else ->
-                if (iconOnly) inactive
+                if (iconOnly || hyper) inactive
                 else unavailableTileColors().copy(iconBackground = bubbleOff)
         }
     }

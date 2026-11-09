@@ -78,6 +78,7 @@ import androidx.compose.ui.zIndex
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.android.systemui.qs.panels.ui.compose.infinitegrid.ColorOSIconRowGap
 import com.android.systemui.qs.panels.ui.compose.infinitegrid.CommonTileDefaults
+import com.android.systemui.qs.panels.ui.compose.infinitegrid.LocalHyperOSQsStyle
 import com.android.systemui.qs.panels.ui.compose.infinitegrid.SmallTileContent
 import com.android.systemui.qs.panels.ui.compose.infinitegrid.colorOSTileRim
 import com.android.systemui.qs.panels.ui.viewmodel.EditModeViewModel
@@ -192,7 +193,7 @@ internal fun ColorOSEditor(editViewModel: EditModeViewModel, modifier: Modifier 
     val pinnedChoice by rememberColorOSPinned()
     var selectedPin by remember { mutableStateOf<Int?>(null) }
     val pinned =
-        colorOSPinnedOf(activeSpecs.map { it.spec }.toSet(), pinnedChoice)
+        colorOSPinnedOf(activeSpecs.map { it.spec }.toSet(), pinnedChoice, LocalHyperOSQsStyle.current)
 
     fun assignPin(spec: TileSpec) {
         val slot = selectedPin ?: return

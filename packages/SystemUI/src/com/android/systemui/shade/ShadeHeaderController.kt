@@ -153,6 +153,7 @@ constructor(
 
         /** Value of [Settings.System.QS_PANEL_STYLE] for the ColorOS panel. */
         private const val QS_PANEL_STYLE_COLOROS = 2
+        private const val QS_PANEL_STYLE_HYPEROS = 4
 
         private fun Int.stateToString() =
             when (this) {
@@ -471,7 +472,7 @@ constructor(
     override fun onTuningChanged(key: String?, value: String?) {
         when (key) {
             QS_PANEL_STYLE -> {
-                val enabled = TunerService.parseInteger(value, 0) == QS_PANEL_STYLE_COLOROS
+                val enabled = TunerService.parseInteger(value, 0).let { it == QS_PANEL_STYLE_COLOROS || it == QS_PANEL_STYLE_HYPEROS }
                 if (enabled != colorOSStyle) {
                     colorOSStyle = enabled
                     loadConstraints()

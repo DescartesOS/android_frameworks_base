@@ -96,12 +96,16 @@ internal data class ColorOSPinned(val cards: List<String?>, val pill: String?) {
  * choice get what ColorOS pins there, the Wi-Fi and Bluetooth tiles with their fallbacks, and My
  * Devices.
  */
-internal fun colorOSPinnedOf(present: Set<String>, chosen: List<String?>): ColorOSPinned {
+internal fun colorOSPinnedOf(
+    present: Set<String>,
+    chosen: List<String?>,
+    hyper: Boolean = false,
+): ColorOSPinned {
     val taken = mutableSetOf<String>()
     val valid = parseColorOSPinned(formatColorOSPinned(chosen)).map { spec ->
         spec?.takeIf { it in present && taken.add(it) }
     }
-    val auto = colorOSCardSlotsOf(present - taken)
+    val auto = colorOSCardSlotsOf(present - taken, hyper)
     return ColorOSPinned(
         cards = listOf(valid[0] ?: auto[0], valid[1] ?: auto[1]),
         pill = valid[COLOROS_PILL_SLOT],
