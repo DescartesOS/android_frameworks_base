@@ -407,6 +407,7 @@ filegroup {
 //Create a library to expose SystemUI's resources to other modules.
 android_library {
     name: "SystemUI-res",
+    asset_dirs: ["assets"],
     use_resource_processor: true,
     enable_ksp: true,
     resource_dirs: [
@@ -1106,7 +1107,10 @@ android_app {
     resource_dirs: [],
     enable_ksp: true,
 
-    jni_libs: ["liblunaris_water_ripple"],
+    jni_libs: [
+        "liblunaris_water_ripple",
+        "libdescartes_charging",
+    ],
     use_embedded_native_libs: true,
 
     use_resource_processor: true,

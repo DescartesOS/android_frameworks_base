@@ -1,0 +1,43 @@
+license {
+    name: "descartes_charging_vendor_license",
+    license_kinds: ["legacy_proprietary"],
+}
+
+cc_library_shared {
+    name: "libdescartes_charging",
+    stem: "libnativeChargingRing",
+    srcs: ["unsupported.cpp"],
+    header_libs: ["jni_headers"],
+    stl: "none",
+    system_ext_specific: true,
+}
+
+cc_prebuilt_library_shared {
+    name: "libdescartes_charging",
+    stem: "libnativeChargingRing",
+    licenses: ["descartes_charging_vendor_license"],
+    prefer: true,
+    enabled: false,
+    arch: {
+        arm64: {
+            enabled: true,
+            srcs: ["arm64/libnativeChargingRing.so"],
+        },
+    },
+    shared_libs: [
+        "libandroid",
+        "liblog",
+        "libGLESv3",
+        "libEGL",
+        "libjnigraphics",
+        "libm",
+        "libdl",
+        "libc",
+    ],
+    ignore_max_page_size: true,
+    stl: "none",
+    strip: {
+        none: true,
+    },
+    system_ext_specific: true,
+}

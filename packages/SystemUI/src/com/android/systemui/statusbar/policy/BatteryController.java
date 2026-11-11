@@ -74,6 +74,10 @@ public interface BatteryController extends DemoMode,
      */
     boolean isPluggedIn();
 
+    default long getChargingPowerMicrowatts() {
+        return -1L;
+    }
+
     /**
      * Returns {@code true} if the device is currently plugged in via wireless charger.
      */

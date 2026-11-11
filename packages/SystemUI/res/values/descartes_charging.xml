@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <bool name="config_useColorOsChargingAnimation">true</bool>
+    <string name="charging_animation_normal">Charging</string>
+    <string name="charging_animation_fast">Fast Charging</string>
+</resources>

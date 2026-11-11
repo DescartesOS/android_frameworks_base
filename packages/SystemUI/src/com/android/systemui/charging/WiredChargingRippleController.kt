@@ -24,6 +24,7 @@ import android.graphics.Color
 import android.graphics.PixelFormat
 import android.graphics.Typeface
 import android.os.SystemProperties
+import android.util.Log
 import android.view.Gravity
 import android.view.Surface
 import android.view.View
@@ -95,6 +96,9 @@ constructor(
         }
     private var lastTriggerTime: Long? = null
     private var debounceLevel = 0
+    @VisibleForTesting internal var colorOsChargingView: ColorOsChargingView? = null
+    private var nativeChargingUnavailable = false
+    private val dismissColorOsCharging = Runnable { removeColorOsChargingView() }
 
     @VisibleForTesting
     var rippleView: RippleView = RippleView(context, attrs = null).also { it.setupShader() }
@@ -104,7 +108,8 @@ constructor(
     var axChargingCircleView: AXChargingCircleView = AXChargingCircleView(context, attrs = null)
 
     init {
-        pluggedIn = batteryController.isPluggedIn
+        pluggedIn = batteryController.isPluggedIn &&
+            !batteryController.isPluggedInWireless && !batteryController.isChargingSourceDock
         commandRegistry.registerCommand("charging-ripple") { ChargingRippleCommand() }
         updateRippleColor()
     }
@@ -117,20 +122,22 @@ constructor(
                     nowPluggedIn: Boolean,
                     charging: Boolean,
                 ) {
-                    // Suppresses the ripple when the state change comes from wireless charging or
-                    // its dock.
-                    if (
-                        batteryController.isPluggedInWireless ||
-                            batteryController.isChargingSourceDock
-                    ) {
+                    val wired = nowPluggedIn &&
+                        !batteryController.isPluggedInWireless &&
+                        !batteryController.isChargingSourceDock
+                    val previouslyWired = pluggedIn
+                    pluggedIn = wired
+                    batteryLevel = level
+                    if (!wired) {
+                        removeColorOsChargingView()
                         return
                     }
-
-                    batteryLevel = level
-                    if (!pluggedIn && nowPluggedIn) {
+                    colorOsChargingView?.updateBatteryState(
+                        level, batteryController.chargingPowerMicrowatts
+                    )
+                    if (!previouslyWired) {
                         startRippleWithDebounce()
                     }
-                    pluggedIn = nowPluggedIn
                 }
             }
         batteryController.addCallback(batteryStateChangeCallback)
@@ -146,6 +153,7 @@ constructor(
                 }
 
                 override fun onConfigChanged(newConfig: Configuration?) {
+                    removeColorOsChargingView()
                     normalizedPortPosX =
                         context.resources.getFloat(
                             R.dimen.physical_charger_port_location_normalized_x
@@ -178,11 +186,61 @@ constructor(
     }
 
     fun startRipple() {
+        if (colorOsChargingView != null) return
+        if (!nativeChargingUnavailable &&
+            context.resources.getBoolean(R.bool.config_useColorOsChargingAnimation)) {
+            startColorOsChargingAnimation()
+            return
+        }
+        startLegacyChargingAnimation()
+    }
+
+    private fun startLegacyChargingAnimation() {
         if (context.resources.getBoolean(R.bool.config_useCustomChargingAnim)) {
             startCustomRipple()
         } else {
             startAospRipple()
         }
+    }
+
+    private fun startColorOsChargingAnimation() {
+        try {
+            val view = ColorOsChargingView(
+                context, batteryLevel, batteryController.chargingPowerMicrowatts,
+                {
+                    nativeChargingUnavailable = true
+                    removeColorOsChargingView()
+                    startLegacyChargingAnimation()
+                },
+                { removeColorOsChargingView() }
+            )
+            colorOsChargingView = view
+            view.setOnTouchListener { _, _ ->
+                removeColorOsChargingView()
+                true
+            }
+            val params = WindowManager.LayoutParams().apply {
+                copyFrom(windowLayoutParams)
+                packageName = context.opPackageName
+                flags = WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE or
+                    WindowManager.LayoutParams.FLAG_HARDWARE_ACCELERATED
+            }
+            windowManager.addView(view, params)
+            view.postDelayed(dismissColorOsCharging, 8000L)
+            uiEventLogger.log(WiredChargingRippleEvent.CHARGING_RIPPLE_PLAYED)
+        } catch (error: RuntimeException) {
+            Log.w("WiredChargingRipple", "Cannot show native charging animation", error)
+            nativeChargingUnavailable = true
+            removeColorOsChargingView()
+            startLegacyChargingAnimation()
+        }
+    }
+
+    private fun removeColorOsChargingView() {
+        val view = colorOsChargingView ?: return
+        colorOsChargingView = null
+        view.removeCallbacks(dismissColorOsCharging)
+        removeWindowViewIfAttached(view)
     }
 
     private fun startAospRipple() {

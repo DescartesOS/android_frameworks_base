@@ -381,4 +381,40 @@ public class BatteryControllerTest extends SysuiTestCase {
             this.powerSaverOn = isPowerSave;
         }
     }
+
+    @Test
+    public void chargingPowerReflectsNegotiationBeforeLevelCallbacks() {
+        List<Long> observed = new ArrayList<>();
+        mBatteryController.addCallback(new BatteryStateChangeCallback() {
+            @Override
+            public void onBatteryLevelChanged(int level, boolean pluggedIn, boolean charging) {
+                observed.add(mBatteryController.getChargingPowerMicrowatts());
+            }
+        });
+        observed.clear();
+        Intent intent = new Intent(Intent.ACTION_BATTERY_CHANGED)
+                .putExtra(BatteryManager.EXTRA_PLUGGED, BatteryManager.BATTERY_PLUGGED_AC)
+                .putExtra(BatteryManager.EXTRA_STATUS, BatteryManager.BATTERY_STATUS_CHARGING)
+                .putExtra(BatteryManager.EXTRA_MAX_CHARGING_CURRENT, 3_000_000)
+                .putExtra(BatteryManager.EXTRA_MAX_CHARGING_VOLTAGE, 5_000_000);
+        mBatteryController.onReceive(getContext(), intent);
+        intent.putExtra(BatteryManager.EXTRA_MAX_CHARGING_VOLTAGE, 9_000_000);
+        mBatteryController.onReceive(getContext(), intent);
+        intent.putExtra(BatteryManager.EXTRA_PLUGGED, 0);
+        mBatteryController.onReceive(getContext(), intent);
+        assertThat(observed).containsExactly(15_000_000L, 27_000_000L, -1L).inOrder();
+    }
+
+    @Test
+    public void wirelessAndDockDoNotExposeWiredChargingPower() {
+        for (int source : new int[] { BatteryManager.BATTERY_PLUGGED_WIRELESS,
+                BatteryManager.BATTERY_PLUGGED_DOCK }) {
+            Intent intent = new Intent(Intent.ACTION_BATTERY_CHANGED)
+                    .putExtra(BatteryManager.EXTRA_PLUGGED, source)
+                    .putExtra(BatteryManager.EXTRA_MAX_CHARGING_CURRENT, 3_000_000)
+                    .putExtra(BatteryManager.EXTRA_MAX_CHARGING_VOLTAGE, 9_000_000);
+            mBatteryController.onReceive(getContext(), intent);
+            assertThat(mBatteryController.getChargingPowerMicrowatts()).isEqualTo(-1L);
+        }
+    }
 }

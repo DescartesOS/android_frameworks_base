@@ -65,6 +65,7 @@ class WiredChargingRippleControllerTest : SysuiTestCase() {
     @Before
     fun setUp() {
         MockitoAnnotations.initMocks(this)
+        mContext.orCreateTestableResources.addOverride(R.bool.config_useColorOsChargingAnimation, false)
         `when`(featureFlags.isEnabled(Flags.CHARGING_RIPPLE)).thenReturn(true)
         controller =
             WiredChargingRippleController(

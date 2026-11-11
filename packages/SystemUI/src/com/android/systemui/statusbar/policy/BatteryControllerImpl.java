@@ -46,6 +46,7 @@ import com.android.settingslib.fuelgauge.BatterySaverUtils;
 import com.android.settingslib.fuelgauge.Estimate;
 import com.android.settingslib.utils.PowerUtil;
 import com.android.systemui.Dumpable;
+import com.android.systemui.charging.ChargingPower;
 import com.android.systemui.animation.Expandable;
 import com.android.systemui.broadcast.BroadcastDispatcher;
 import com.android.systemui.dagger.qualifiers.Background;
@@ -92,6 +93,7 @@ public class BatteryControllerImpl extends BroadcastReceiver implements BatteryC
     protected boolean mPluggedIn;
     private int mPluggedChargingSource;
     protected boolean mCharging;
+    private long mChargingPowerMicrowatts = -1L;
     private boolean mStateUnknown = false;
     private boolean mCharged;
     protected boolean mPowerSave;
@@ -179,6 +181,8 @@ public class BatteryControllerImpl extends BroadcastReceiver implements BatteryC
         ipw.println(mPluggedIn);
         ipw.print("mCharging=");
         ipw.println(mCharging);
+        ipw.print("mChargingPowerMicrowatts=");
+        ipw.println(mChargingPowerMicrowatts);
         ipw.print("mCharged=");
         ipw.println(mCharged);
         ipw.print("mIsBatteryDefender=");
@@ -217,6 +221,11 @@ public class BatteryControllerImpl extends BroadcastReceiver implements BatteryC
     @Override
     public void clearLastPowerSaverStartExpandable() {
         mPowerSaverStartExpandable.set(null);
+    }
+
+    @Override
+    public long getChargingPowerMicrowatts() {
+        return mChargingPowerMicrowatts;
     }
 
     @Override
@@ -263,6 +272,11 @@ public class BatteryControllerImpl extends BroadcastReceiver implements BatteryC
                     BatteryManager.BATTERY_STATUS_UNKNOWN);
             mCharged = status == BatteryManager.BATTERY_STATUS_FULL;
             mCharging = mCharged || status == BatteryManager.BATTERY_STATUS_CHARGING;
+            boolean wired = mPluggedChargingSource == BatteryManager.BATTERY_PLUGGED_USB
+                    || mPluggedChargingSource == BatteryManager.BATTERY_PLUGGED_AC;
+            mChargingPowerMicrowatts = wired ? ChargingPower.fromMicroampsAndMicrovolts(
+                    intent.getIntExtra(BatteryManager.EXTRA_MAX_CHARGING_CURRENT, -1),
+                    intent.getIntExtra(BatteryManager.EXTRA_MAX_CHARGING_VOLTAGE, -1)) : -1L;
             if (mWirelessCharging != (mCharging
                     && intent.getIntExtra(BatteryManager.EXTRA_PLUGGED, 0)
                     == BatteryManager.BATTERY_PLUGGED_WIRELESS)) {
